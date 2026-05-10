@@ -1,0 +1,108 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Solidez palette — extracted from the official logo (forest green + orange→red gradient) */
+  --color-brand-50: #f0f9f4;
+  --color-brand-100: #dcf2e3;
+  --color-brand-200: #bbe5cb;
+  --color-brand-300: #87ceaa;
+  --color-brand-400: #4eae84;
+  --color-brand-500: #2c8c66;
+  --color-brand-600: #1f7253;
+  --color-brand-700: #1a5b44;
+  --color-brand-800: #174a39;
+  --color-brand-900: #143d31;
+  --color-brand-950: #0a221b;
+
+  --color-accent-50: #fff7ed;
+  --color-accent-100: #ffedd5;
+  --color-accent-200: #fed7aa;
+  --color-accent-300: #fdba74;
+  --color-accent-400: #fb923c;
+  --color-accent-500: #f97316;
+  --color-accent-600: #ea580c;
+  --color-accent-700: #c2410c;
+  --color-accent-800: #9a3412;
+  --color-accent-900: #7c2d12;
+
+  --color-danger-500: #dc2626;
+  --color-danger-600: #b91c1c;
+
+  --color-warn-500: #d97706;
+  --color-warn-600: #b45309;
+
+  --color-cream: #faf6ee;
+
+  --shadow-card: 0 1px 2px rgba(20, 61, 49, 0.04), 0 4px 12px rgba(20, 61, 49, 0.06);
+  --shadow-pop: 0 8px 28px rgba(20, 61, 49, 0.16);
+
+  --radius-card: 14px;
+  --radius-input: 10px;
+}
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    border-color: theme(--color-brand-100);
+  }
+
+  html {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    background: theme(--color-cream);
+    color: theme(--color-brand-900);
+    min-height: 100vh;
+  }
+
+  ::selection {
+    background: theme(--color-accent-200);
+    color: theme(--color-brand-900);
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    font: inherit;
+  }
+
+  [data-disabled='true'] {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+}
+
+@layer utilities {
+  .gradient-brand {
+    background: linear-gradient(135deg, theme(--color-accent-400) 0%, theme(--color-danger-500) 100%);
+  }
+  .gradient-brand-text {
+    background: linear-gradient(135deg, theme(--color-accent-500) 0%, theme(--color-danger-600) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: theme(--color-brand-300) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: theme(--color-brand-300);
+    border-radius: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
