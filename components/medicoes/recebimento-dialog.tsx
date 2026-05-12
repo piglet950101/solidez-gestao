@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { TextField, Field } from '@/components/ui/form-field';
+import { TextField, CurrencyField, Field } from '@/components/ui/form-field';
 import { Textarea } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { registrarRecebimento } from '@/actions/medicoes';
@@ -22,8 +22,13 @@ export function RecebimentoDialog({ medicaoId, medicaoLabel, valorLiquido, jaRec
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [tipo, setTipo] = React.useState<'dinheiro' | 'permuta'>('dinheiro');
-  const [pending, startTransition] = React.useTransition();
   const saldo = valorLiquido - jaRecebido;
+  const [valor, setValor] = React.useState<number>(saldo > 0 ? saldo : 0);
+  const [pending, startTransition] = React.useTransition();
+
+  React.useEffect(() => {
+    if (open) setValor(saldo > 0 ? saldo : 0);
+  }, [open, saldo]);
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -58,7 +63,7 @@ export function RecebimentoDialog({ medicaoId, medicaoLabel, valorLiquido, jaRec
 
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <TextField label="Valor" name="valor" type="number" step="0.01" inputMode="decimal" required defaultValue={saldo > 0 ? saldo.toFixed(2) : ''} />
+            <CurrencyField label="Valor" name="valor" required value={valor} onChange={setValor} />
             <TextField label="Data" name="data_recebimento" type="date" required defaultValue={new Date().toISOString().slice(0, 10)} />
           </div>
 

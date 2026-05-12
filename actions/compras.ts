@@ -96,6 +96,34 @@ export async function criarCompra(formData: FormData): Promise<{ id?: string; er
   return { id: data as string };
 }
 
+export async function atualizarCompraBasico(
+  id: string,
+  data: { data_compra: string; descricao: string; observacoes: string | null },
+) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('compras')
+    .update({
+      data_compra: data.data_compra,
+      descricao: data.descricao,
+      observacoes: data.observacoes ?? null,
+    })
+    .eq('id', id);
+  if (error) return { error: error.message };
+  revalidatePath('/compras');
+  revalidatePath(`/compras/${id}`);
+  return {};
+}
+
+export async function excluirCompra(id: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from('compras').delete().eq('id', id);
+  if (error) return { error: error.message };
+  revalidatePath('/compras');
+  revalidatePath('/');
+  return {};
+}
+
 export async function pagarParcela(parcelaId: string, dataPagamento: string) {
   const supabase = await createClient();
   const { error } = await supabase

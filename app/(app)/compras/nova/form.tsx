@@ -2,9 +2,10 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Input, Textarea } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { CurrencyField, Field, TextField } from '@/components/ui/form-field';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RateioForm } from '@/components/compras/rateio-form';
 import { ParcelasEditor } from '@/components/compras/parcelas-editor';
@@ -69,8 +70,7 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
   return (
     <form onSubmit={onSubmit} className="space-y-6">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label>Empresa</Label>
+        <Field label="Empresa" name="empresa_id" required>
           <Select value={empresaId} onValueChange={setEmpresaId}>
             <SelectTrigger>
               <SelectValue />
@@ -83,30 +83,13 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
               ))}
             </SelectContent>
           </Select>
-        </div>
+        </Field>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="data_compra">Data da compra</Label>
-          <Input id="data_compra" name="data_compra" type="date" required defaultValue={new Date().toISOString().slice(0, 10)} />
-        </div>
+        <TextField label="Data da compra" name="data_compra" type="date" required defaultValue={new Date().toISOString().slice(0, 10)} />
 
-        <div className="md:col-span-2 space-y-1.5">
-          <Label htmlFor="descricao">Descrição</Label>
-          <Input id="descricao" name="descricao" required maxLength={140} placeholder="Ex.: 100 luvas + EPI · NF 12345" />
-        </div>
+        <TextField label="Descrição" name="descricao" required maxLength={140} placeholder="Ex.: 100 luvas + EPI · NF 12345" className="md:col-span-2" />
 
-        <div className="space-y-1.5">
-          <Label htmlFor="valor_total_input">Valor total</Label>
-          <Input
-            id="valor_total_input"
-            type="number"
-            step="0.01"
-            inputMode="decimal"
-            value={valorTotal || ''}
-            onChange={(e) => setValorTotal(Number(e.target.value))}
-            required
-          />
-        </div>
+        <CurrencyField label="Valor total" name="valor_total" required value={valorTotal} onChange={setValorTotal} />
 
         <div className="space-y-1.5">
           <Label>Categoria</Label>

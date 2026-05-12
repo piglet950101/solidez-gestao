@@ -3,7 +3,7 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { TextField, TextareaField, Field } from '@/components/ui/form-field';
+import { TextField, TextareaField, CurrencyField, Field } from '@/components/ui/form-field';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { criarVeiculo, atualizarVeiculo } from '@/actions/veiculos';
 import type { Veiculo } from '@/types/database';
@@ -16,6 +16,7 @@ export function VeiculoForm({ veiculo, empresas }: { veiculo?: Veiculo; empresas
   const [status, setStatus] = React.useState<Veiculo['status']>(veiculo?.status ?? 'ativo');
   const [empresaId, setEmpresaId] = React.useState<string>(veiculo?.empresa_id ?? '__none__');
   const [finAtivo, setFinAtivo] = React.useState(veiculo?.financiamento_ativo ?? false);
+  const [finParcela, setFinParcela] = React.useState<number>(veiculo?.financiamento_parcela ?? 0);
   const [pending, startTransition] = React.useTransition();
   const isEdit = Boolean(veiculo?.id);
 
@@ -109,7 +110,7 @@ export function VeiculoForm({ veiculo, empresas }: { veiculo?: Veiculo; empresas
         </label>
         {finAtivo && (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <TextField label="Valor da parcela" name="financiamento_parcela" type="number" step="0.01" defaultValue={veiculo?.financiamento_parcela ?? ''} />
+            <CurrencyField label="Valor da parcela" name="financiamento_parcela" value={finParcela} onChange={setFinParcela} />
             <TextField label="Parcelas restantes" name="financiamento_parcelas_restantes" type="number" defaultValue={veiculo?.financiamento_parcelas_restantes ?? ''} />
           </div>
         )}

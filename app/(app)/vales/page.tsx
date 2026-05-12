@@ -1,4 +1,4 @@
-import { PiggyBank, Plus } from 'lucide-react';
+import { PiggyBank, Plus, Pencil } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { PageHeader } from '@/components/ui/page-header';
@@ -7,6 +7,8 @@ import { Table, THead, TBody, TR, TH, TD, TableEmpty } from '@/components/ui/tab
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
+import { ConfirmDeleteDialog } from '@/components/ui/confirm-delete-dialog';
+import { excluirVale } from '@/actions/folha';
 import { formatBRL, formatDate } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
@@ -50,6 +52,7 @@ export default async function ValesPage() {
                   <TH>Obra</TH>
                   <TH className="text-right">Valor</TH>
                   <TH>Status</TH>
+                  <TH className="text-right">Ações</TH>
                 </TR>
               </THead>
               <TBody>
@@ -68,6 +71,28 @@ export default async function ValesPage() {
                         ) : (
                           <Badge tone="amber">aberto</Badge>
                         )}
+                      </TD>
+                      <TD className="text-right">
+                        <div className="flex justify-end gap-1">
+                          {!v.descontado_em_folha_id && (
+                            <>
+                              <Button variant="ghost" size="icon" asChild aria-label="Editar">
+                                <Link href={`/vales/${v.id}`}>
+                                  <Pencil className="size-4" />
+                                </Link>
+                              </Button>
+                              <ConfirmDeleteDialog
+                                iconOnly
+                                title="Excluir vale"
+                                description={`${f?.nome} · ${formatBRL(v.valor)} (${formatDate(v.data)})`}
+                                onConfirm={async () => {
+                                  'use server';
+                                  return await excluirVale(v.id);
+                                }}
+                              />
+                            </>
+                          )}
+                        </div>
                       </TD>
                     </TR>
                   );

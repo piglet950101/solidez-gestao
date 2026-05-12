@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Label } from './label';
 import { Input, Textarea } from './input';
+import { CurrencyInput } from './currency-input';
 import { cn } from '@/lib/utils';
 
 interface FieldProps {
@@ -52,3 +53,37 @@ export const TextareaField = React.forwardRef<HTMLTextAreaElement, TextareaField
   ),
 );
 TextareaField.displayName = 'TextareaField';
+
+interface CurrencyFieldProps extends FieldProps {
+  value: number | null | undefined;
+  onChange?: (value: number) => void;
+  placeholder?: string;
+  disabled?: boolean;
+}
+
+export function CurrencyField({
+  label,
+  name,
+  required,
+  hint,
+  className,
+  value,
+  onChange,
+  placeholder,
+  disabled,
+}: CurrencyFieldProps) {
+  return (
+    <Field label={label} name={name} required={required} hint={hint} className={className}>
+      <CurrencyInput
+        id={name}
+        name={name}
+        value={value}
+        onChange={onChange}
+        required={required}
+        placeholder={placeholder}
+        disabled={disabled}
+      />
+    </Field>
+  );
+}
+

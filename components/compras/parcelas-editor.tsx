@@ -2,6 +2,7 @@
 import * as React from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { gerarParcelas } from '@/lib/rateio';
@@ -63,12 +64,9 @@ export function ParcelasEditor({ valorTotal, parcelas, onChange }: ParcelasEdito
             </div>
             <div className="col-span-4">
               <Label>Valor</Label>
-              <Input
-                type="number"
-                step="0.01"
-                inputMode="decimal"
+              <CurrencyInput
                 value={p.valor}
-                onChange={(e) => update(i, { valor: Number(e.target.value) })}
+                onChange={(v) => update(i, { valor: v })}
                 required
               />
               <input type="hidden" name={`parcelas[${i}][valor]`} value={p.valor} />

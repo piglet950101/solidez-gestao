@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { FileBarChart, Plus } from 'lucide-react';
+import { FileBarChart, Plus, Pencil } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,6 +7,8 @@ import { Table, THead, TBody, TR, TH, TD, TableEmpty } from '@/components/ui/tab
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
+import { ConfirmDeleteDialog } from '@/components/ui/confirm-delete-dialog';
+import { excluirMedicao } from '@/actions/medicoes';
 import { formatBRL, formatDate } from '@/lib/format';
 import { RecebimentoDialog } from '@/components/medicoes/recebimento-dialog';
 
@@ -93,12 +95,28 @@ export default async function MedicoesPage({
                         {recebido < Number(m.valor_liquido) ? <Badge tone="amber">parcial</Badge> : null}
                       </TD>
                       <TD className="text-right">
-                        <RecebimentoDialog
-                          medicaoId={m.id}
-                          medicaoLabel={`${obra?.nome ?? ''} · medição #${m.num_medicao}`}
-                          valorLiquido={Number(m.valor_liquido)}
-                          jaRecebido={recebido}
-                        />
+                        <div className="flex justify-end gap-1">
+                          <RecebimentoDialog
+                            medicaoId={m.id}
+                            medicaoLabel={`${obra?.nome ?? ''} · medição #${m.num_medicao}`}
+                            valorLiquido={Number(m.valor_liquido)}
+                            jaRecebido={recebido}
+                          />
+                          <Button variant="ghost" size="icon" asChild aria-label="Editar">
+                            <Link href={`/medicoes/${m.id}`}>
+                              <Pencil className="size-4" />
+                            </Link>
+                          </Button>
+                          <ConfirmDeleteDialog
+                            iconOnly
+                            title="Excluir medição"
+                            description={`#${m.num_medicao} · ${obra?.nome ?? ''} · ${formatBRL(m.valor_liquido)}`}
+                            onConfirm={async () => {
+                              'use server';
+                              return await excluirMedicao(m.id);
+                            }}
+                          />
+                        </div>
                       </TD>
                     </TR>
                   );

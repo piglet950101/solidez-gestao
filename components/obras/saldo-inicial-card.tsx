@@ -3,6 +3,7 @@ import * as React from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { formatBRL, formatDate } from '@/lib/format';
 import { createClient } from '@/lib/supabase/client';
@@ -53,14 +54,7 @@ export function SaldoInicialCard({ obraId, saldoInicial, saldoInicialData }: Pro
           <div className="space-y-3">
             <div className="space-y-1.5">
               <Label htmlFor="saldo">Valor</Label>
-              <Input
-                id="saldo"
-                type="number"
-                step="0.01"
-                inputMode="decimal"
-                value={valor || ''}
-                onChange={(e) => setValor(Number(e.target.value))}
-              />
+              <CurrencyInput id="saldo" value={valor} onChange={setValor} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="data">Data de referência</Label>

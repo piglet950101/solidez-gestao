@@ -3,7 +3,7 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { TextField, Field } from '@/components/ui/form-field';
+import { TextField, CurrencyField, Field } from '@/components/ui/form-field';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { lancarFolha } from '@/actions/folha';
 import { formatBRL } from '@/lib/format';
@@ -101,10 +101,10 @@ export function NovaFolhaForm({ funcionarios, obras }: { funcionarios: FuncOpt[]
       <section className="space-y-3">
         <h3 className="text-sm font-semibold uppercase tracking-widest text-brand-600">Valores</h3>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-          <TextField label="Valor horas (auto)" name="valor_horas" type="number" step="0.01" value={valorHoras || ''} onChange={(e) => setValorHoras(Number(e.target.value))} />
-          <TextField label="Salário fixo" name="valor_salario_fixo" type="number" step="0.01" value={valorFixo || ''} onChange={(e) => setValorFixo(Number(e.target.value))} />
-          <TextField label="Outros extras" name="valor_extras" type="number" step="0.01" value={valorExtras || ''} onChange={(e) => setValorExtras(Number(e.target.value))} />
-          <TextField label="Outros descontos" name="valor_outros_descontos" type="number" step="0.01" value={outros || ''} onChange={(e) => setOutros(Number(e.target.value))} />
+          <CurrencyField label="Valor horas (auto)" name="valor_horas" value={valorHoras} onChange={setValorHoras} />
+          <CurrencyField label="Salário fixo" name="valor_salario_fixo" value={valorFixo} onChange={setValorFixo} />
+          <CurrencyField label="Outros extras" name="valor_extras" value={valorExtras} onChange={setValorExtras} />
+          <CurrencyField label="Outros descontos" name="valor_outros_descontos" value={outros} onChange={setOutros} />
         </div>
         <div className="rounded-[10px] border border-brand-100 bg-brand-50 px-4 py-3 text-right">
           <span className="text-xs uppercase tracking-widest text-brand-600">Líquido (sem vales)</span>

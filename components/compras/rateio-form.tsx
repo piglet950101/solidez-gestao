@@ -2,6 +2,7 @@
 import * as React from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -101,12 +102,9 @@ export function RateioForm({ obras, valorTotal, modo, onModoChange, alocacoes, o
               {modo === 'valor' && (
                 <div className="col-span-3">
                   <Label>Valor</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    inputMode="decimal"
-                    value={a.valor ?? ''}
-                    onChange={(e) => update(i, { valor: Number(e.target.value) })}
+                  <CurrencyInput
+                    value={a.valor ?? null}
+                    onChange={(v) => update(i, { valor: v })}
                   />
                 </div>
               )}

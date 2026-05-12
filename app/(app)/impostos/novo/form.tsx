@@ -3,7 +3,7 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { TextField, Field } from '@/components/ui/form-field';
+import { TextField, CurrencyField, Field } from '@/components/ui/form-field';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { lancarImposto } from '@/actions/imposto';
 
@@ -12,6 +12,7 @@ interface Opt { id: string; nome: string }
 export function NovoImpostoForm({ empresas }: { empresas: Opt[] }) {
   const router = useRouter();
   const [empresaId, setEmpresaId] = React.useState(empresas[0]!.id);
+  const [valorTotal, setValorTotal] = React.useState<number>(0);
   const [pending, startTransition] = React.useTransition();
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -43,7 +44,7 @@ export function NovoImpostoForm({ empresas }: { empresas: Opt[] }) {
         </Field>
         <TextField label="Mês de referência" name="mes_referencia" type="month" required
           defaultValue={new Date().toISOString().slice(0, 7)} />
-        <TextField label="Valor total do boleto" name="valor_total" type="number" step="0.01" required />
+        <CurrencyField label="Valor total do boleto" name="valor_total" required value={valorTotal} onChange={setValorTotal} />
         <TextField label="Data de vencimento" name="data_vencimento" type="date" />
         <TextField label="Número do boleto" name="num_boleto" className="md:col-span-2" />
       </div>

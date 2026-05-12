@@ -4,7 +4,10 @@ import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { FuncionarioForm } from '../form';
+import { DesligarFuncionarioDialog } from '@/components/funcionarios/desligar-dialog';
+import { formatDate } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +25,8 @@ export default async function EditarFuncionarioPage({
     .maybeSingle();
   if (!funcionario) notFound();
 
+  const desligado = funcionario.status === 'desligado';
+
   return (
     <div className="space-y-6">
       <Link
@@ -32,7 +37,21 @@ export default async function EditarFuncionarioPage({
       </Link>
       <PageHeader
         title={funcionario.nome}
-        description={`Editar cadastro · ${funcionario.cargo ?? 'sem cargo'}`}
+        description={
+          desligado
+            ? `Desligado em ${formatDate(funcionario.data_desligamento)} · ${funcionario.cargo ?? 'sem cargo'}`
+            : `Editar cadastro · ${funcionario.cargo ?? 'sem cargo'}`
+        }
+        actions={
+          desligado ? (
+            <Badge tone="red">Desligado</Badge>
+          ) : (
+            <DesligarFuncionarioDialog
+              funcionarioId={funcionario.id}
+              funcionarioNome={funcionario.nome}
+            />
+          )
+        }
       />
       <Card>
         <CardContent className="py-6">

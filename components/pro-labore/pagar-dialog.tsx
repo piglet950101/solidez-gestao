@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { TextField } from '@/components/ui/form-field';
+import { CurrencyField } from '@/components/ui/form-field';
 import { pagarProLabore } from '@/actions/pro-labore';
 import { formatBRL } from '@/lib/format';
 
@@ -41,7 +41,7 @@ export function ProLaborePagarDialog({ id, valorPrevisto }: { id: string; valorP
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4">
-          <TextField label="Valor efetivamente pago" name="valor_pago" type="number" step="0.01" inputMode="decimal" required value={valor || ''} onChange={(e) => setValor(Number(e.target.value))} />
+          <CurrencyField label="Valor efetivamente pago" name="valor_pago" required value={valor} onChange={setValor} />
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={pending}>Cancelar</Button>
             <Button type="submit" variant="accent" disabled={pending || valor <= 0}>

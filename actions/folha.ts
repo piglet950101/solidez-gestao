@@ -62,6 +62,30 @@ const ValeSchema = z.object({
   valor: z.coerce.number().positive(),
 });
 
+export async function atualizarVale(id: string, formData: FormData) {
+  const parsed = ValeSchema.safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) return { error: 'Dados inválidos.' };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('vales')
+    .update({
+      ...parsed.data,
+      data: parsed.data.data.toISOString().slice(0, 10),
+    })
+    .eq('id', id);
+  if (error) return { error: error.message };
+  revalidatePath('/vales');
+  return {};
+}
+
+export async function excluirVale(id: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from('vales').delete().eq('id', id);
+  if (error) return { error: error.message };
+  revalidatePath('/vales');
+  return {};
+}
+
 export async function lancarVale(formData: FormData) {
   const parsed = ValeSchema.safeParse(Object.fromEntries(formData.entries()));
   if (!parsed.success) return { error: 'Dados inválidos.' };

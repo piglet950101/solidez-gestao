@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Plus, ShoppingCart } from 'lucide-react';
+import { Plus, ShoppingCart, Pencil } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,6 +7,8 @@ import { Table, THead, TBody, TR, TH, TD, TableEmpty } from '@/components/ui/tab
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
+import { ConfirmDeleteDialog } from '@/components/ui/confirm-delete-dialog';
+import { excluirCompra } from '@/actions/compras';
 import { formatBRL, formatDate } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
@@ -64,6 +66,7 @@ export default async function ComprasPage({
                   <TH>Obras</TH>
                   <TH>Parcelas</TH>
                   <TH className="text-right">Total</TH>
+                  <TH className="text-right">Ações</TH>
                 </TR>
               </THead>
               <TBody>
@@ -94,6 +97,24 @@ export default async function ComprasPage({
                         {pagas}/{total}
                       </TD>
                       <TD className="text-right font-mono font-bold text-brand-900">{formatBRL(c.valor_total)}</TD>
+                      <TD className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" asChild aria-label="Editar">
+                            <Link href={`/compras/${c.id}`}>
+                              <Pencil className="size-4" />
+                            </Link>
+                          </Button>
+                          <ConfirmDeleteDialog
+                            iconOnly
+                            title="Excluir compra"
+                            description={`${c.descricao} · ${formatBRL(c.valor_total)} (${formatDate(c.data_compra)})`}
+                            onConfirm={async () => {
+                              'use server';
+                              return await excluirCompra(c.id);
+                            }}
+                          />
+                        </div>
+                      </TD>
                     </TR>
                   );
                 })}

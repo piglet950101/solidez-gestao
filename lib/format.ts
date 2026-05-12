@@ -58,7 +58,34 @@ export function formatPhone(phone: string | null | undefined): string {
   return phone;
 }
 
-export function brlToNumber(input: string): number {
-  if (!input) return 0;
-  return Number(input.replace(/[^\d,-]/g, '').replace(',', '.'));
+/**
+ * Parse a money string written in either Brazilian or US format into a Number.
+ * Decides which separator is the decimal one by looking at which appears LAST.
+ *
+ *   "R$ 37.479,12"  → 37479.12   (BR thousands=.  decimal=,)
+ *   "R$ 1.234,56"   → 1234.56    (BR)
+ *   "37479,12"      → 37479.12   (BR)
+ *   "37479.12"      → 37479.12   (no separator ambiguity)
+ *   "1,234.56"      → 1234.56    (US thousands=, decimal=.)
+ *   "37479"         → 37479
+ */
+export function brlToNumber(input: string | number | null | undefined): number {
+  if (input == null || input === '') return 0;
+  if (typeof input === 'number') return input;
+  const cleaned = input.replace(/[^\d,.-]/g, '');
+  if (!cleaned) return 0;
+  const lastComma = cleaned.lastIndexOf(',');
+  const lastDot = cleaned.lastIndexOf('.');
+  let normalized: string;
+  if (lastComma > lastDot) {
+    // Brazilian: dots are thousand separators, comma is decimal.
+    normalized = cleaned.replace(/\./g, '').replace(',', '.');
+  } else if (lastDot > lastComma) {
+    // US: commas are thousand separators, dot is decimal.
+    normalized = cleaned.replace(/,/g, '');
+  } else {
+    normalized = cleaned;
+  }
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : 0;
 }

@@ -3,7 +3,7 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { TextField, TextareaField, Field } from '@/components/ui/form-field';
+import { TextField, TextareaField, CurrencyField, Field } from '@/components/ui/form-field';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Funcionario } from '@/types/database';
 import { createClient } from '@/lib/supabase/client';
@@ -17,6 +17,8 @@ export function FuncionarioForm({ funcionario }: Props) {
   const supabase = React.useMemo(() => createClient(), []);
   const [tipo, setTipo] = React.useState<Funcionario['tipo_contrato']>(funcionario?.tipo_contrato ?? 'horista');
   const [status, setStatus] = React.useState<Funcionario['status']>(funcionario?.status ?? 'ativo');
+  const [salarioHora, setSalarioHora] = React.useState<number>(funcionario?.salario_hora ?? 0);
+  const [salarioMes, setSalarioMes] = React.useState<number>(funcionario?.salario_mes ?? 0);
   const [pending, startTransition] = React.useTransition();
   const isEdit = Boolean(funcionario?.id);
 
@@ -115,10 +117,10 @@ export function FuncionarioForm({ funcionario }: Props) {
             </Select>
           </Field>
           {tipo === 'horista' && (
-            <TextField label="Salário por hora" name="salario_hora" type="number" step="0.01" defaultValue={funcionario?.salario_hora ?? ''} />
+            <CurrencyField label="Salário por hora" name="salario_hora" value={salarioHora} onChange={setSalarioHora} />
           )}
           {(tipo === 'clt' || tipo === 'temporario') && (
-            <TextField label="Salário mensal" name="salario_mes" type="number" step="0.01" defaultValue={funcionario?.salario_mes ?? ''} />
+            <CurrencyField label="Salário mensal" name="salario_mes" value={salarioMes} onChange={setSalarioMes} />
           )}
           <Field label="Status" name="status" required>
             <Select value={status} onValueChange={(v) => setStatus(v as Funcionario['status'])}>

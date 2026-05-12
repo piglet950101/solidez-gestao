@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { TextField, TextareaField, Field } from '@/components/ui/form-field';
+import { TextField, TextareaField, CurrencyField, Field } from '@/components/ui/form-field';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { criarEmpreitada } from '@/actions/empreitadas';
 
@@ -14,6 +14,7 @@ export function NovaEmpreitadaForm({ obras, cabecas }: { obras: Opt[]; cabecas: 
   const router = useRouter();
   const [obraId, setObraId] = React.useState(obras[0]!.id);
   const [cabecaId, setCabecaId] = React.useState(cabecas[0]?.id ?? '');
+  const [valorTotal, setValorTotal] = React.useState<number>(0);
   const [pending, startTransition] = React.useTransition();
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -67,7 +68,7 @@ export function NovaEmpreitadaForm({ obras, cabecas }: { obras: Opt[]; cabecas: 
           )}
         </Field>
         <TextField label="Descrição do serviço" name="descricao" required placeholder="Ex: Laje 3 do Select, ferragens 2º pavimento" className="md:col-span-2" />
-        <TextField label="Valor total fechado" name="valor_total" type="number" step="0.01" inputMode="decimal" required />
+        <CurrencyField label="Valor total fechado" name="valor_total" required value={valorTotal} onChange={setValorTotal} />
         <TextField label="Data de início" name="data_inicio" type="date" required defaultValue={new Date().toISOString().slice(0, 10)} />
       </div>
 

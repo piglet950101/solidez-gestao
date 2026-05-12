@@ -5,7 +5,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { TextField, TextareaField, Field } from '@/components/ui/form-field';
+import { TextField, TextareaField, CurrencyField, Field } from '@/components/ui/form-field';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { criarCustoFixo } from '@/actions/custos-fixos';
 
@@ -17,6 +17,7 @@ export function NovoCustoFixoForm({ empresas, obras, categorias }: { empresas: E
   const router = useRouter();
   const [empresaId, setEmpresaId] = React.useState(empresas[0]!.id);
   const [categoriaId, setCategoriaId] = React.useState<string>('__none__');
+  const [valorMensal, setValorMensal] = React.useState<number>(0);
   const [alocacoes, setAlocacoes] = React.useState<{ obra_id: string; percentual: number }[]>([]);
   const [pending, startTransition] = React.useTransition();
 
@@ -81,7 +82,7 @@ export function NovoCustoFixoForm({ empresas, obras, categorias }: { empresas: E
           </Select>
         </Field>
         <TextField label="Descrição" name="descricao" required placeholder="Contabilidade, Seguro do trabalho, etc." />
-        <TextField label="Valor mensal" name="valor_mensal" type="number" step="0.01" required />
+        <CurrencyField label="Valor mensal" name="valor_mensal" required value={valorMensal} onChange={setValorMensal} />
         <TextField label="Dia de vencimento" name="dia_vencimento" type="number" min={1} max={31} placeholder="Ex: 5" />
         <Field label="Categoria" name="categoria_id">
           <Select value={categoriaId} onValueChange={setCategoriaId}>

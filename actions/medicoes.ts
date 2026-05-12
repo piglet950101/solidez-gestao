@@ -78,6 +78,31 @@ export async function registrarAntecipacao(formData: FormData) {
   return {};
 }
 
+export async function atualizarMedicao(id: string, formData: FormData) {
+  const parsed = NovaMedicaoSchema.safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Dados inválidos.' };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('medicoes')
+    .update({
+      ...parsed.data,
+      data_emissao: parsed.data.data_emissao.toISOString().slice(0, 10),
+    })
+    .eq('id', id);
+  if (error) return { error: error.message };
+  revalidatePath('/medicoes');
+  revalidatePath(`/medicoes/${id}`);
+  return {};
+}
+
+export async function excluirMedicao(id: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from('medicoes').delete().eq('id', id);
+  if (error) return { error: error.message };
+  revalidatePath('/medicoes');
+  return {};
+}
+
 export async function conciliarAntecipacao(antecipacaoId: string, medicaoId: string) {
   const supabase = await createClient();
   const { error } = await supabase.rpc('fn_conciliar_antecipacao', {
