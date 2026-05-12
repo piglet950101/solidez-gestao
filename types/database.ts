@@ -380,6 +380,8 @@ export type Database = {
           tamanho_calca: string | null;
           observacoes: string | null;
           cabeca_de_empreitada: boolean;
+          experiencia_dias_1: number | null;
+          experiencia_dias_2: number | null;
           criado_em: string;
           atualizado_em: string;
         };
@@ -405,6 +407,8 @@ export type Database = {
           tamanho_calca?: string | null;
           cabeca_de_empreitada?: boolean;
           observacoes?: string | null;
+          experiencia_dias_1?: number | null;
+          experiencia_dias_2?: number | null;
         };
         Update: Partial<Database['public']['Tables']['funcionarios']['Insert']>;
         Relationships: [];

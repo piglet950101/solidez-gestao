@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Users, Plus } from 'lucide-react';
+import { Users, Plus, Pencil } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardContent } from '@/components/ui/card';
@@ -31,7 +31,7 @@ export default async function FuncionariosPage() {
     <div className="space-y-6">
       <PageHeader
         title="Funcionários"
-        description={`${funcionarios?.length ?? 0} ativos. Cadastro completo com PIX, contato, EPI e período de experiência.`}
+        description={`${funcionarios?.length ?? 0} ativos. Cadastro completo com PIX, contato, EPI e período de experiência editável.`}
         actions={
           <Button variant="accent" asChild>
             <Link href="/funcionarios/novo">
@@ -45,7 +45,7 @@ export default async function FuncionariosPage() {
         <EmptyState
           icon={<Users className="size-10" />}
           title="Sem funcionários"
-          description="Cadastre ou importe os 72 funcionários da planilha atual."
+          description="Cadastre ou importe os funcionários da planilha."
         />
       ) : (
         <Card>
@@ -59,14 +59,19 @@ export default async function FuncionariosPage() {
                   <TH>Contrato</TH>
                   <TH className="text-right">Salário</TH>
                   <TH>Admissão</TH>
+                  <TH>Experiência</TH>
                   <TH>Status</TH>
+                  <TH className="text-right">Ações</TH>
                 </TR>
               </THead>
               <TBody>
                 {funcionarios.map((f) => {
+                  const dias1 = f.experiencia_dias_1 ?? 45;
+                  const dias2 = f.experiencia_dias_2 ?? 90;
                   const dias = f.data_admissao ? differenceInDays(new Date(), new Date(f.data_admissao)) : null;
-                  const experiencia = dias != null && dias <= 90;
-                  const proximoFim = dias != null && (dias >= 38 && dias <= 45 || dias >= 83 && dias <= 90);
+                  const emExperiencia = dias != null && dias >= 0 && dias <= dias2;
+                  const proximoEtapa1 = dias != null && dias >= dias1 - 7 && dias <= dias1;
+                  const proximoEtapa2 = dias != null && dias >= dias2 - 7 && dias <= dias2;
                   return (
                     <TR key={f.id}>
                       <TD>
@@ -91,12 +96,23 @@ export default async function FuncionariosPage() {
                       </TD>
                       <TD>{formatDate(f.data_admissao)}</TD>
                       <TD>
-                        <Badge tone={f.status === 'ativo' ? 'green' : 'neutral'}>{f.status}</Badge>
-                        {experiencia ? (
-                          <Badge tone={proximoFim ? 'red' : 'amber'} className="ml-1">
-                            {dias} dias
+                        {emExperiencia ? (
+                          <Badge tone={proximoEtapa2 ? 'red' : proximoEtapa1 ? 'amber' : 'green'}>
+                            {dias}/{dias2} dias · {dias1}+{dias2 - dias1}
                           </Badge>
-                        ) : null}
+                        ) : (
+                          <span className="text-xs text-brand-400">—</span>
+                        )}
+                      </TD>
+                      <TD>
+                        <Badge tone={f.status === 'ativo' ? 'green' : 'neutral'}>{f.status}</Badge>
+                      </TD>
+                      <TD className="text-right">
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href={`/funcionarios/${f.id}`}>
+                            <Pencil className="size-3.5" /> Editar
+                          </Link>
+                        </Button>
                       </TD>
                     </TR>
                   );

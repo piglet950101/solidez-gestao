@@ -20,6 +20,28 @@ export function FuncionarioForm({ funcionario }: Props) {
   const [pending, startTransition] = React.useTransition();
   const isEdit = Boolean(funcionario?.id);
 
+  // Período de experiência editável (45+45 padrão, mas Brasil permite outros splits)
+  const initialDias1 = funcionario?.experiencia_dias_1 ?? 45;
+  const initialDias2 = funcionario?.experiencia_dias_2 ?? 90;
+  const PRESETS = [
+    { label: '45 + 45 (padrão CLT)', d1: 45, d2: 90 },
+    { label: '30 + 60', d1: 30, d2: 90 },
+    { label: '60 + 30', d1: 60, d2: 90 },
+    { label: '90 direto (sem split intermediário)', d1: 90, d2: 90 },
+    { label: 'Sem período de experiência', d1: 0, d2: 0 },
+  ];
+  const matchIdx = PRESETS.findIndex((p) => p.d1 === initialDias1 && p.d2 === initialDias2);
+  const [presetIdx, setPresetIdx] = React.useState<string>(matchIdx >= 0 ? String(matchIdx) : 'custom');
+  const [dias1, setDias1] = React.useState(initialDias1);
+  const [dias2, setDias2] = React.useState(initialDias2);
+
+  function onPresetChange(v: string) {
+    setPresetIdx(v);
+    if (v === 'custom') return;
+    const p = PRESETS[Number(v)];
+    if (p) { setDias1(p.d1); setDias2(p.d2); }
+  }
+
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
@@ -44,6 +66,8 @@ export function FuncionarioForm({ funcionario }: Props) {
       tamanho_calca: String(fd.get('tamanho_calca') ?? '').trim() || null,
       cabeca_de_empreitada: fd.get('cabeca_de_empreitada') === 'on',
       observacoes: String(fd.get('observacoes') ?? '').trim() || null,
+      experiencia_dias_1: dias1 || null,
+      experiencia_dias_2: dias2 || null,
     };
 
     if (!payload.nome || payload.nome.length < 2) {
@@ -109,8 +133,60 @@ export function FuncionarioForm({ funcionario }: Props) {
           </Field>
         </div>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <TextField label="Data de admissão" name="data_admissao" type="date" defaultValue={funcionario?.data_admissao ?? ''} hint="Necessária pro alerta automático de fim de experiência (45/90 dias)" />
+          <TextField
+            label="Data de admissão"
+            name="data_admissao"
+            type="date"
+            defaultValue={funcionario?.data_admissao ?? ''}
+            hint="Necessária pro alerta automático de fim de experiência"
+          />
           <TextField label="Data de desligamento" name="data_desligamento" type="date" defaultValue={funcionario?.data_desligamento ?? ''} />
+        </div>
+
+        <div className="rounded-[12px] border border-brand-100 bg-brand-50/40 p-4 space-y-3">
+          <h4 className="text-xs font-bold uppercase tracking-widest text-brand-600">Período de experiência</h4>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <Field label="Modelo" name="experiencia_modo" className="md:col-span-3">
+              <Select value={presetIdx} onValueChange={onPresetChange}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {PRESETS.map((p, i) => (
+                    <SelectItem key={i} value={String(i)}>{p.label}</SelectItem>
+                  ))}
+                  <SelectItem value="custom">Personalizado</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            {(presetIdx === 'custom' || dias2 > 0) && presetIdx !== String(PRESETS.length - 1) ? (
+              <>
+                <TextField
+                  label="1ª etapa (dias)"
+                  name="experiencia_dias_1"
+                  type="number"
+                  min={0}
+                  max={dias2}
+                  value={dias1 || ''}
+                  onChange={(e) => { setDias1(Number(e.target.value)); setPresetIdx('custom'); }}
+                  hint="Aviso amarelo dispara aqui"
+                />
+                <TextField
+                  label="Total do contrato (dias)"
+                  name="experiencia_dias_2"
+                  type="number"
+                  min={dias1}
+                  value={dias2 || ''}
+                  onChange={(e) => { setDias2(Number(e.target.value)); setPresetIdx('custom'); }}
+                  hint="Aviso vermelho dispara aqui (decisão final)"
+                />
+                <div className="rounded-[8px] bg-white border border-brand-100 px-3 py-2 text-xs text-brand-600">
+                  <strong>Resumo:</strong>
+                  <div className="mt-1 font-mono text-brand-800">
+                    {dias1} + {Math.max(0, dias2 - dias1)} = {dias2} dias
+                  </div>
+                </div>
+              </>
+            ) : null}
+          </div>
         </div>
         <div className="flex flex-wrap gap-6">
           <label className="flex items-center gap-2 text-sm">
