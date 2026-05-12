@@ -25,6 +25,13 @@ export function FornecedorQuickAddDialog({ onCreated }: Props) {
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    // Stop the synthetic submit event from bubbling to the outer <form> (the
+    // compras/nova form). Radix Dialog renders via a Portal so the dialog's
+    // form is outside the outer form in the DOM, but React's synthetic event
+    // system still bubbles through the component tree — without this guard,
+    // clicking "Cadastrar e usar" triggers BOTH criarFornecedor and the outer
+    // criarCompra in the same RSC batch.
+    e.stopPropagation();
     const fd = new FormData(e.currentTarget);
     startTransition(async () => {
       const res = await criarFornecedor(fd);
