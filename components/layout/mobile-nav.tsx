@@ -86,17 +86,26 @@ const MENU_GROUPS: { group: string; items: MobileNavItem[] }[] = [
   },
 ];
 
+// Paths where the bottom nav should be hidden because the page has its own
+// fixed bottom CTA or is a focused single-task flow (e.g. /capturar).
+const HIDE_ON = ['/capturar'];
+
 export function MobileNav() {
   const pathname = usePathname();
   const router = useRouter();
   const [quickOpen, setQuickOpen] = React.useState(false);
   const [menuOpen, setMenuOpen] = React.useState(false);
 
+  if (HIDE_ON.some((p) => pathname.startsWith(p))) return null;
+
   const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
 
   return (
     <>
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex items-stretch justify-around border-t border-brand-100 bg-white/95 backdrop-blur md:hidden">
+      <nav
+        className="fixed inset-x-0 bottom-0 z-30 flex items-stretch justify-around border-t border-brand-100 bg-white/95 backdrop-blur md:hidden"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      >
         {PRIMARY.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.href);
