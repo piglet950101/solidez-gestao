@@ -9,6 +9,7 @@ import { CurrencyField, Field, TextField } from '@/components/ui/form-field';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RateioForm } from '@/components/compras/rateio-form';
 import { ParcelasEditor } from '@/components/compras/parcelas-editor';
+import { FornecedorQuickAddDialog } from '@/components/fornecedores/quick-add-dialog';
 import { criarCompra } from '@/actions/compras';
 import { gerarParcelas, type RateioInputObra, type RateioModo } from '@/lib/rateio';
 
@@ -37,6 +38,9 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
   );
   const [quemPagou, setQuemPagou] = React.useState<'empresa' | 'socio' | 'funcionario'>('empresa');
   const [pagoSocio, setPagoSocio] = React.useState<string>('');
+  // Local list of fornecedores so a quick-add can append without page reload
+  const [fornecedoresList, setFornecedoresList] = React.useState(fornecedores);
+  const [fornecedorId, setFornecedorId] = React.useState<string>('');
   const [pending, startTransition] = React.useTransition();
 
   const obrasDaEmpresa = obras.filter((o) => o.empresa_id === empresaId);
@@ -55,6 +59,8 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
     fd.set('parcelas_json', JSON.stringify(parcelas));
     fd.set('quem_pagou', quemPagou);
     if (quemPagou === 'socio') fd.set('pago_por_socio_id', pagoSocio);
+    if (fornecedorId) fd.set('fornecedor_id', fornecedorId);
+    else fd.delete('fornecedor_id');
 
     startTransition(async () => {
       const result = await criarCompra(fd);
@@ -109,18 +115,29 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
 
         <div className="space-y-1.5">
           <Label>Fornecedor</Label>
-          <Select name="fornecedor_id">
-            <SelectTrigger>
-              <SelectValue placeholder="(opcional)" />
-            </SelectTrigger>
-            <SelectContent>
-              {fornecedores.map((f) => (
-                <SelectItem key={f.id} value={f.id}>
-                  {f.nome}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-stretch gap-2">
+            <div className="min-w-0 flex-1">
+              <Select value={fornecedorId || '__none__'} onValueChange={(v) => setFornecedorId(v === '__none__' ? '' : v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="(opcional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— sem fornecedor —</SelectItem>
+                  {fornecedoresList.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>
+                      {f.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <FornecedorQuickAddDialog
+              onCreated={(novo) => {
+                setFornecedoresList((prev) => [...prev, novo].sort((a, b) => a.nome.localeCompare(b.nome)));
+                setFornecedorId(novo.id);
+              }}
+            />
+          </div>
         </div>
 
         <div className="space-y-1.5">

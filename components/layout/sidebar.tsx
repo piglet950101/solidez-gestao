@@ -16,6 +16,7 @@ import {
   PiggyBank,
   Hammer,
   Coins,
+  Building,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -24,6 +25,7 @@ const NAV: { href: string; label: string; icon: React.ComponentType<{ className?
   { href: '/obras', label: 'Obras', icon: HardHat, group: 'visao' },
 
   { href: '/compras', label: 'Compras', icon: ShoppingCart, group: 'financeiro' },
+  { href: '/fornecedores', label: 'Fornecedores', icon: Building, group: 'financeiro' },
   { href: '/custos-fixos', label: 'Custos Fixos', icon: Wallet, group: 'financeiro' },
   { href: '/medicoes', label: 'Medições', icon: FileBarChart, group: 'financeiro' },
   { href: '/impostos', label: 'Impostos', icon: Receipt, group: 'financeiro' },

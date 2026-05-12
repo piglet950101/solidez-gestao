@@ -20,6 +20,7 @@ import {
   Hammer,
   Coins,
   Receipt,
+  Building,
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -58,6 +59,7 @@ const MENU_GROUPS: { group: string; items: MobileNavItem[] }[] = [
     group: 'Financeiro',
     items: [
       { href: '/compras', label: 'Compras', icon: ShoppingCart },
+      { href: '/fornecedores', label: 'Fornecedores', icon: Building },
       { href: '/custos-fixos', label: 'Custos Fixos', icon: Wallet },
       { href: '/medicoes', label: 'Medições', icon: FileBarChart },
       { href: '/impostos', label: 'Impostos', icon: Receipt },
