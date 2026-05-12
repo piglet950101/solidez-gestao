@@ -1,9 +1,11 @@
-import { Wallet } from 'lucide-react';
+import Link from 'next/link';
+import { Wallet, Plus } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, THead, TBody, TR, TH, TD, TableEmpty } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { formatBRL } from '@/lib/format';
 
@@ -22,6 +24,11 @@ export default async function CustosFixosPage() {
       <PageHeader
         title="Custos Fixos"
         description="Endereçamento manual a uma ou mais obras — sem rateio uniforme automático."
+        actions={
+          <Button variant="accent" asChild>
+            <Link href="/custos-fixos/novo"><Plus className="size-4" /> Novo custo fixo</Link>
+          </Button>
+        }
       />
 
       {!custos?.length ? (

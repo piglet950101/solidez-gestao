@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { formatBRL, formatMonthRef } from '@/lib/format';
+import { fecharFolhaAction } from './actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,6 +63,7 @@ export default async function FolhaPage() {
                     <TH className="text-right">Vales</TH>
                     <TH className="text-right">Líquido</TH>
                     <TH>Status</TH>
+                    <TH className="text-right">Ações</TH>
                   </TR>
                 </THead>
                 <TBody>
@@ -81,6 +83,18 @@ export default async function FolhaPage() {
                           <Badge tone={l.status === 'paga' ? 'green' : l.status === 'fechada' ? 'brand' : 'amber'}>
                             {l.status}
                           </Badge>
+                        </TD>
+                        <TD className="text-right">
+                          {l.status === 'aberta' ? (
+                            <form action={fecharFolhaAction}>
+                              <input type="hidden" name="funcionario_id" value={l.funcionario_id} />
+                              <input type="hidden" name="obra_id" value={l.obra_id} />
+                              <input type="hidden" name="mes_referencia" value={l.mes_referencia} />
+                              <Button type="submit" variant="outline" size="sm">Fechar mês</Button>
+                            </form>
+                          ) : (
+                            <span className="text-xs text-brand-400">fechada</span>
+                          )}
                         </TD>
                       </TR>
                     );

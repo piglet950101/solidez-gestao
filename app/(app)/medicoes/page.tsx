@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { formatBRL, formatDate } from '@/lib/format';
+import { RecebimentoDialog } from '@/components/medicoes/recebimento-dialog';
 
 export const dynamic = 'force-dynamic';
 
@@ -65,6 +66,7 @@ export default async function MedicoesPage({
                   <TH className="text-right">Líquido</TH>
                   <TH className="text-right">Recebido</TH>
                   <TH>Tipos</TH>
+                  <TH className="text-right">Ações</TH>
                 </TR>
               </THead>
               <TBody>
@@ -89,6 +91,14 @@ export default async function MedicoesPage({
                       <TD className="space-x-1">
                         {temPermuta ? <Badge tone="accent">★ permuta</Badge> : null}
                         {recebido < Number(m.valor_liquido) ? <Badge tone="amber">parcial</Badge> : null}
+                      </TD>
+                      <TD className="text-right">
+                        <RecebimentoDialog
+                          medicaoId={m.id}
+                          medicaoLabel={`${obra?.nome ?? ''} · medição #${m.num_medicao}`}
+                          valorLiquido={Number(m.valor_liquido)}
+                          jaRecebido={recebido}
+                        />
                       </TD>
                     </TR>
                   );

@@ -49,6 +49,7 @@ export default async function ImpostosPage() {
                   <TH className="text-right">Valor</TH>
                   <TH>Status</TH>
                   <TH>Rateio</TH>
+                  <TH className="text-right">Ações</TH>
                 </TR>
               </THead>
               <TBody>
@@ -73,6 +74,13 @@ export default async function ImpostosPage() {
                       </TD>
                       <TD className="text-xs text-brand-600">
                         {aloc?.length ? aloc.map((a) => `${a.obras?.nome} (${formatBRL(a.valor)})`).join(' · ') : '—'}
+                      </TD>
+                      <TD className="text-right">
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href={`/impostos/${i.id}/ratear`}>
+                            {i.status === 'pendente_rateio' ? 'Ratear' : 'Editar rateio'}
+                          </Link>
+                        </Button>
                       </TD>
                     </TR>
                   );

@@ -98,6 +98,8 @@ export type Database = {
           data_fim_real: string | null;
           endereco: string | null;
           observacoes: string | null;
+          saldo_inicial: number | null;
+          saldo_inicial_data: string | null;
           criado_em: string;
           atualizado_em: string;
         };
@@ -114,6 +116,8 @@ export type Database = {
           data_fim_real?: string | null;
           endereco?: string | null;
           observacoes?: string | null;
+          saldo_inicial?: number | null;
+          saldo_inicial_data?: string | null;
         };
         Update: Partial<Database['public']['Tables']['obras']['Insert']>;
         Relationships: [];
@@ -492,7 +496,7 @@ export type Database = {
           criado_em: string;
           atualizado_em: string;
         };
-        Insert: { id?: string; obra_id: string; descricao: string; valor_total: number; cabeca_funcionario_id: string; status?: EmpreitadaStatus; data_inicio: string };
+        Insert: { id?: string; obra_id: string; descricao: string; valor_total: number; cabeca_funcionario_id: string; status?: EmpreitadaStatus; data_inicio: string; data_conclusao?: string | null; observacoes?: string | null };
         Update: Partial<Database['public']['Tables']['empreitadas']['Insert']>;
         Relationships: [];
       };
@@ -522,7 +526,7 @@ export type Database = {
           criado_em: string;
           atualizado_em: string;
         };
-        Insert: { id?: string; socio_id: string; obra_id: string; mes_referencia: string; valor_definido: number; valor_pago?: number | null; status?: ProLaboreStatus; observacoes?: string | null };
+        Insert: { id?: string; socio_id: string; obra_id: string; mes_referencia: string; valor_definido: number; valor_pago?: number | null; status?: ProLaboreStatus; data_pagamento?: string | null; observacoes?: string | null };
         Update: Partial<Database['public']['Tables']['pro_labore']['Insert']>;
         Relationships: [];
       };

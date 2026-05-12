@@ -6,6 +6,8 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LucroDistribuivelCard } from '@/components/obras/lucro-distribuivel-card';
+import { SaldoInicialCard } from '@/components/obras/saldo-inicial-card';
+import { AntecipacaoConciliarDialog } from '@/components/obras/antecipacao-conciliar-dialog';
 import { Table, THead, TBody, TR, TH, TD, TableEmpty } from '@/components/ui/table';
 import { formatBRL, formatDate, formatMonthRef } from '@/lib/format';
 import { Button } from '@/components/ui/button';
@@ -181,6 +183,7 @@ export default async function ObraDetailPage({
                     <TH>Data</TH>
                     <TH className="text-right">Valor</TH>
                     <TH>Status</TH>
+                    <TH className="text-right">Ação</TH>
                   </TR>
                 </THead>
                 <TBody>
@@ -198,6 +201,24 @@ export default async function ObraDetailPage({
                             <Badge tone="amber">aguardando medição</Badge>
                           )}
                         </TD>
+                        <TD className="text-right">
+                          {!a.abatido_em_medicao_id && medicoes?.length ? (
+                            <AntecipacaoConciliarDialog
+                              antecipacaoId={a.id}
+                              valor={Number(a.valor)}
+                              data={a.data_recebimento}
+                              medicoes={medicoes.map((m) => ({
+                                id: m.id,
+                                num_medicao: m.num_medicao,
+                                valor_liquido: Number(m.valor_liquido),
+                                data_emissao: m.data_emissao,
+                                num_nota_fiscal: m.num_nota_fiscal,
+                              }))}
+                            />
+                          ) : (
+                            <span className="text-xs text-brand-400">—</span>
+                          )}
+                        </TD>
                       </TR>
                     ))
                   )}
@@ -208,6 +229,11 @@ export default async function ObraDetailPage({
         </div>
 
         <div className="space-y-4">
+          <SaldoInicialCard
+            obraId={obra.id}
+            saldoInicial={obra.saldo_inicial}
+            saldoInicialData={obra.saldo_inicial_data}
+          />
           {lucro ? (
             <LucroDistribuivelCard
               receita_caixa={Number(lucro.receita_caixa)}

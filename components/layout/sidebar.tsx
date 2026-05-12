@@ -14,6 +14,8 @@ import {
   Camera,
   Wallet,
   PiggyBank,
+  Hammer,
+  Coins,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -29,6 +31,8 @@ const NAV: { href: string; label: string; icon: React.ComponentType<{ className?
   { href: '/funcionarios', label: 'Funcionários', icon: Users, group: 'pessoas' },
   { href: '/folha', label: 'Folha', icon: Banknote, group: 'pessoas' },
   { href: '/vales', label: 'Vales', icon: PiggyBank, group: 'pessoas' },
+  { href: '/empreitadas', label: 'Empreitadas', icon: Hammer, group: 'pessoas' },
+  { href: '/pro-labore', label: 'Pró-labore', icon: Coins, group: 'pessoas' },
 
   { href: '/veiculos', label: 'Veículos', icon: Truck, group: 'frota' },
 

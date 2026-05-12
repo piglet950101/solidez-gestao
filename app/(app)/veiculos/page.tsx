@@ -1,8 +1,10 @@
-import { Truck, AlertTriangle } from 'lucide-react';
+import Link from 'next/link';
+import { Truck, AlertTriangle, Plus, Pencil } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge, StatusDot } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { formatDate } from '@/lib/format';
 import { differenceInDays } from 'date-fns';
@@ -20,11 +22,24 @@ export default async function VeiculosPage() {
   if (!veiculos?.length) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Veículos" description="Frota mista CPF/CNPJ, alocação por obra, alertas semáforo." />
+        <PageHeader
+          title="Veículos"
+          description="Frota mista CPF/CNPJ, alocação por obra, alertas semáforo."
+          actions={
+            <Button variant="accent" asChild>
+              <Link href="/veiculos/novo"><Plus className="size-4" /> Novo veículo</Link>
+            </Button>
+          }
+        />
         <EmptyState
           icon={<Truck className="size-10" />}
           title="Sem veículos cadastrados"
           description="Cadastre cada veículo com tag de propriedade (próprio CNPJ ou parceria CPF) e custos."
+          action={
+            <Button variant="accent" asChild>
+              <Link href="/veiculos/novo">Cadastrar primeiro veículo</Link>
+            </Button>
+          }
         />
       </div>
     );
@@ -32,7 +47,15 @@ export default async function VeiculosPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Veículos" description={`${veiculos.length} veículos · custo continua sendo lançado na obra independentemente da titularidade`} />
+      <PageHeader
+        title="Veículos"
+        description={`${veiculos.length} veículos · custo continua sendo lançado na obra independentemente da titularidade`}
+        actions={
+          <Button variant="accent" asChild>
+            <Link href="/veiculos/novo"><Plus className="size-4" /> Novo veículo</Link>
+          </Button>
+        }
+      />
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {veiculos.map((v) => {
           const docDias = v.doc_vencimento ? differenceInDays(new Date(v.doc_vencimento), new Date()) : null;
@@ -43,14 +66,21 @@ export default async function VeiculosPage() {
             <Card key={v.id}>
               <CardHeader>
                 <div className="flex flex-col">
-                  <CardTitle>{v.placa}</CardTitle>
+                  <Link href={`/veiculos/${v.id}`} className="text-base font-semibold leading-none text-brand-900 hover:underline">
+                    {v.placa}
+                  </Link>
                   <span className="text-xs text-brand-500">{v.modelo}{v.ano ? ` · ${v.ano}` : ''}</span>
                 </div>
-                {v.tipo_propriedade === 'proprio_cnpj' ? (
-                  <Badge tone="brand">★ CNPJ próprio</Badge>
-                ) : (
-                  <Badge tone="amber">⚠ CPF parceria</Badge>
-                )}
+                <div className="flex flex-col items-end gap-1">
+                  {v.tipo_propriedade === 'proprio_cnpj' ? (
+                    <Badge tone="brand">★ CNPJ próprio</Badge>
+                  ) : (
+                    <Badge tone="amber">⚠ CPF parceria</Badge>
+                  )}
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link href={`/veiculos/${v.id}`}><Pencil className="size-3.5" /> Editar</Link>
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex items-center justify-between rounded-[10px] bg-brand-50 px-3 py-2">
