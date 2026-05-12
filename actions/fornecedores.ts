@@ -19,7 +19,12 @@ export async function criarFornecedor(formData: FormData) {
   const { data, error } = await supabase.from('fornecedores').insert(parsed.data).select('id, nome').single();
   if (error) return { error: error.message };
   revalidatePath('/fornecedores');
-  revalidatePath('/compras/nova');
+  // Intentionally NOT revalidating /compras/nova: when this action is called
+  // from the quick-add dialog, the parent form already appends the new row to
+  // its local fornecedoresList and sets fornecedorId. A revalidatePath here
+  // would re-render the server component for /compras/nova, remounting the
+  // client form and resetting its useState back to initial — which silently
+  // erases the just-selected fornecedorId.
   return { id: data.id, nome: data.nome };
 }
 
