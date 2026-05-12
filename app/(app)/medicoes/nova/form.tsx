@@ -22,7 +22,6 @@ export function NovaMedicaoForm({
   const [pending, startTransition] = React.useTransition();
 
   const valorLiquido = Math.max(0, valorBruto - (valorBruto * aliquota) / 100);
-  const obra = obras.find((o) => o.id === obraId);
   const etapasDaObra = etapas.filter((e) => e.obra_id === obraId);
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
