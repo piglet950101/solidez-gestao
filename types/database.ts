@@ -404,6 +404,7 @@ export type Database = {
           tamanho_camiseta?: string | null;
           tamanho_calca?: string | null;
           cabeca_de_empreitada?: boolean;
+          observacoes?: string | null;
         };
         Update: Partial<Database['public']['Tables']['funcionarios']['Insert']>;
         Relationships: [];
