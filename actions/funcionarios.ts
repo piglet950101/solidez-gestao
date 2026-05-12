@@ -2,25 +2,29 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { optionalString, emptyToNull } from '@/lib/zod-helpers';
+
+const optNumber = z.preprocess(emptyToNull, z.coerce.number().nullable().optional());
+const optDate = z.preprocess(emptyToNull, z.coerce.date().nullable().optional());
 
 const NovoFuncionarioSchema = z.object({
   nome: z.string().min(2),
-  cpf: z.string().nullable().optional(),
-  rg: z.string().nullable().optional(),
-  chave_pix: z.string().nullable().optional(),
-  contato: z.string().nullable().optional(),
-  cargo: z.string().nullable().optional(),
+  cpf: optionalString,
+  rg: optionalString,
+  chave_pix: optionalString,
+  contato: optionalString,
+  cargo: optionalString,
   tipo_contrato: z.enum(['clt', 'horista', 'empreitada', 'temporario']),
-  salario_hora: z.coerce.number().nullable().optional(),
-  salario_mes: z.coerce.number().nullable().optional(),
-  data_admissao: z.coerce.date().nullable().optional(),
-  data_desligamento: z.coerce.date().nullable().optional(),
+  salario_hora: optNumber,
+  salario_mes: optNumber,
+  data_admissao: optDate,
+  data_desligamento: optDate,
   registrado: z.coerce.boolean().default(false),
   tem_os_curso: z.coerce.boolean().default(false),
-  os_curso_validade: z.coerce.date().nullable().optional(),
-  tamanho_sapato: z.string().nullable().optional(),
-  tamanho_camiseta: z.string().nullable().optional(),
-  tamanho_calca: z.string().nullable().optional(),
+  os_curso_validade: optDate,
+  tamanho_sapato: optionalString,
+  tamanho_camiseta: optionalString,
+  tamanho_calca: optionalString,
   cabeca_de_empreitada: z.coerce.boolean().default(false),
 });
 

@@ -4,20 +4,21 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { calcularRateio, type RateioModo, type RateioInputObra } from '@/lib/rateio';
 import type { Json } from '@/types/database';
+import { optionalUuid, optionalString } from '@/lib/zod-helpers';
 
 const NovaCompraSchema = z.object({
   empresa_id: z.string().uuid(),
-  fornecedor_id: z.string().uuid().nullable().optional(),
-  categoria_id: z.string().uuid().nullable().optional(),
+  fornecedor_id: optionalUuid,
+  categoria_id: optionalUuid,
   descricao: z.string().min(3).max(200),
   valor_total: z.coerce.number().positive(),
   data_compra: z.coerce.date(),
   rateio_modo: z.enum(['igual', 'percentual', 'valor', 'quantidade']),
   quem_pagou: z.enum(['empresa', 'socio', 'funcionario']),
-  pago_por_socio_id: z.string().uuid().nullable().optional(),
-  pago_por_funcionario_id: z.string().uuid().nullable().optional(),
-  formato_pagamento: z.string().max(50).nullable().optional(),
-  observacoes: z.string().max(500).nullable().optional(),
+  pago_por_socio_id: optionalUuid,
+  pago_por_funcionario_id: optionalUuid,
+  formato_pagamento: optionalString,
+  observacoes: optionalString,
   alocacoes_json: z.string(),
   parcelas_json: z.string(),
 });

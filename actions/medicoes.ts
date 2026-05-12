@@ -2,17 +2,18 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { optionalUuid, optionalString } from '@/lib/zod-helpers';
 
 const NovaMedicaoSchema = z.object({
   obra_id: z.string().uuid(),
-  etapa_id: z.string().uuid().nullable().optional(),
+  etapa_id: optionalUuid,
   num_medicao: z.coerce.number().int().positive(),
-  descricao: z.string().max(200).nullable().optional(),
+  descricao: optionalString,
   valor_bruto: z.coerce.number().positive(),
   valor_liquido: z.coerce.number().positive(),
   percentual_imposto_estimado: z.coerce.number().min(0).max(100).nullable().optional(),
   data_emissao: z.coerce.date(),
-  num_nota_fiscal: z.string().max(50).nullable().optional(),
+  num_nota_fiscal: optionalString,
 });
 
 export async function criarMedicao(formData: FormData) {

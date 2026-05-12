@@ -2,6 +2,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { optionalString } from '@/lib/zod-helpers';
 
 const Schema = z.object({
   obra_id: z.string().uuid(),
@@ -9,7 +10,7 @@ const Schema = z.object({
   valor_total: z.coerce.number().positive(),
   cabeca_funcionario_id: z.string().uuid(),
   data_inicio: z.coerce.date(),
-  observacoes: z.string().max(500).optional().nullable(),
+  observacoes: optionalString,
 });
 
 export async function criarEmpreitada(formData: FormData) {
@@ -33,7 +34,7 @@ const PagSchema = z.object({
   empreitada_id: z.string().uuid(),
   data: z.coerce.date(),
   valor: z.coerce.number().positive(),
-  observacoes: z.string().max(200).optional().nullable(),
+  observacoes: optionalString,
 });
 
 export async function registrarPagamento(formData: FormData) {

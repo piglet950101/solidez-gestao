@@ -2,6 +2,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { optionalUuid } from '@/lib/zod-helpers';
 
 const NovoLancamentoSchema = z.object({
   funcionario_id: z.string().uuid(),
@@ -57,7 +58,7 @@ export async function fecharFolha(funcionarioId: string, obraId: string, mesRefe
 
 const ValeSchema = z.object({
   funcionario_id: z.string().uuid(),
-  obra_id: z.string().uuid().nullable().optional(),
+  obra_id: optionalUuid,
   data: z.coerce.date(),
   valor: z.coerce.number().positive(),
 });

@@ -2,15 +2,16 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { optionalUuid, optionalString, emptyToNull } from '@/lib/zod-helpers';
 
 const Schema = z.object({
   empresa_id: z.string().uuid(),
   descricao: z.string().min(2).max(120),
-  categoria_id: z.string().uuid().optional().nullable(),
+  categoria_id: optionalUuid,
   valor_mensal: z.coerce.number().positive(),
-  dia_vencimento: z.coerce.number().int().min(1).max(31).optional(),
-  vigencia_inicio: z.coerce.date().optional(),
-  observacoes: z.string().max(500).optional().nullable(),
+  dia_vencimento: z.preprocess(emptyToNull, z.coerce.number().int().min(1).max(31).nullable().optional()),
+  vigencia_inicio: z.preprocess(emptyToNull, z.coerce.date().nullable().optional()),
+  observacoes: optionalString,
   alocacoes_json: z.string(),
 });
 

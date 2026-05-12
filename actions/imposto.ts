@@ -2,13 +2,14 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { optionalString, emptyToNull } from '@/lib/zod-helpers';
 
 const NovoImpostoSchema = z.object({
   empresa_id: z.string().uuid(),
   mes_referencia: z.coerce.date(),
   valor_total: z.coerce.number().positive(),
-  data_vencimento: z.coerce.date().nullable().optional(),
-  num_boleto: z.string().max(80).nullable().optional(),
+  data_vencimento: z.preprocess(emptyToNull, z.coerce.date().nullable().optional()),
+  num_boleto: optionalString,
 });
 
 export async function lancarImposto(formData: FormData) {

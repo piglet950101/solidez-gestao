@@ -2,27 +2,31 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { optionalUuid, optionalString, emptyToNull } from '@/lib/zod-helpers';
+
+const optionalNumber = z.preprocess(emptyToNull, z.coerce.number().nullable().optional());
+const optionalInt = z.preprocess(emptyToNull, z.coerce.number().int().nullable().optional());
 
 const Schema = z.object({
   placa: z.string().min(5).max(10),
   modelo: z.string().min(1).max(80),
-  marca: z.string().max(50).optional().nullable(),
-  ano: z.coerce.number().int().min(1900).max(2100).optional().nullable(),
-  cor: z.string().max(30).optional().nullable(),
+  marca: optionalString,
+  ano: z.preprocess(emptyToNull, z.coerce.number().int().min(1900).max(2100).nullable().optional()),
+  cor: optionalString,
   tipo_propriedade: z.enum(['proprio_cnpj', 'parceria_cpf']),
-  proprietario_nome: z.string().max(80).optional().nullable(),
-  proprietario_documento: z.string().max(20).optional().nullable(),
-  empresa_id: z.string().uuid().optional().nullable(),
+  proprietario_nome: optionalString,
+  proprietario_documento: optionalString,
+  empresa_id: optionalUuid,
   status: z.enum(['ativo', 'manutencao', 'inativo', 'vendido']).optional(),
-  doc_vencimento: z.string().optional().nullable(),
-  ultima_troca_oleo_data: z.string().optional().nullable(),
-  ultima_troca_oleo_km: z.coerce.number().int().optional().nullable(),
-  km_atual: z.coerce.number().int().optional().nullable(),
-  intervalo_oleo_km: z.coerce.number().int().optional().nullable(),
+  doc_vencimento: optionalString,
+  ultima_troca_oleo_data: optionalString,
+  ultima_troca_oleo_km: optionalInt,
+  km_atual: optionalInt,
+  intervalo_oleo_km: optionalInt,
   financiamento_ativo: z.coerce.boolean().optional(),
-  financiamento_parcela: z.coerce.number().optional().nullable(),
-  financiamento_parcelas_restantes: z.coerce.number().int().optional().nullable(),
-  observacoes: z.string().max(500).optional().nullable(),
+  financiamento_parcela: optionalNumber,
+  financiamento_parcelas_restantes: optionalInt,
+  observacoes: optionalString,
 });
 
 function cleanEmpty<T extends Record<string, unknown>>(o: T) {
@@ -67,8 +71,8 @@ const CustoSchema = z.object({
   tipo: z.enum(['combustivel', 'manutencao', 'documentacao', 'financiamento', 'seguro', 'outros']),
   data: z.coerce.date(),
   valor: z.coerce.number().positive(),
-  km: z.coerce.number().int().optional().nullable(),
-  descricao: z.string().max(200).optional().nullable(),
+  km: optionalInt,
+  descricao: optionalString,
 });
 
 export async function registrarVeiculoCusto(formData: FormData) {

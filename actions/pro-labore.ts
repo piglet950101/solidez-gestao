@@ -2,13 +2,14 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { optionalString } from '@/lib/zod-helpers';
 
 const Schema = z.object({
   socio_id: z.string().uuid(),
   obra_id: z.string().uuid(),
   mes_referencia: z.coerce.date(),
   valor_definido: z.coerce.number().positive(),
-  observacoes: z.string().max(200).optional().nullable(),
+  observacoes: optionalString,
 });
 
 export async function cadastrarProLabore(formData: FormData) {

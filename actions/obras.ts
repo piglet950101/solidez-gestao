@@ -2,17 +2,18 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { optionalString, emptyToNull } from '@/lib/zod-helpers';
 
 const NovaObraSchema = z.object({
   empresa_id: z.string().uuid(),
   nome: z.string().min(2).max(80),
-  codigo: z.string().max(40).nullable().optional(),
+  codigo: optionalString,
   tipo: z.enum(['regular', 'curto_prazo']).default('regular'),
   com_permuta: z.coerce.boolean().default(false),
-  data_inicio: z.coerce.date().nullable().optional(),
-  data_fim_prevista: z.coerce.date().nullable().optional(),
-  endereco: z.string().max(200).nullable().optional(),
-  observacoes: z.string().max(500).nullable().optional(),
+  data_inicio: z.preprocess(emptyToNull, z.coerce.date().nullable().optional()),
+  data_fim_prevista: z.preprocess(emptyToNull, z.coerce.date().nullable().optional()),
+  endereco: optionalString,
+  observacoes: optionalString,
   socios_json: z.string().default('[]'),
 });
 
