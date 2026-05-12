@@ -59,8 +59,6 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
     fd.set('parcelas_json', JSON.stringify(parcelas));
     fd.set('quem_pagou', quemPagou);
     if (quemPagou === 'socio') fd.set('pago_por_socio_id', pagoSocio);
-    if (fornecedorId) fd.set('fornecedor_id', fornecedorId);
-    else fd.delete('fornecedor_id');
 
     startTransition(async () => {
       const result = await criarCompra(fd);
@@ -115,6 +113,7 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
 
         <div className="space-y-1.5">
           <Label>Fornecedor</Label>
+          <input type="hidden" name="fornecedor_id" value={fornecedorId} />
           <div className="flex items-stretch gap-2">
             <div className="min-w-0 flex-1">
               <Select value={fornecedorId || '__none__'} onValueChange={(v) => setFornecedorId(v === '__none__' ? '' : v)}>
