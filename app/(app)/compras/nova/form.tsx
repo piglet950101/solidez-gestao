@@ -41,6 +41,15 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
   // Local list of fornecedores so a quick-add can append without page reload
   const [fornecedoresList, setFornecedoresList] = React.useState(fornecedores);
   const [fornecedorId, setFornecedorId] = React.useState<string>('');
+  // Ref shadow of fornecedorId — the React state is reset by Next.js's
+  // automatic route refresh after a Server Action runs (criarFornecedor inside
+  // the quick-add dialog triggers this). The ref survives that refresh and is
+  // used as the authoritative value at submit time.
+  const fornecedorIdRef = React.useRef<string>('');
+  const setFornecedor = React.useCallback((id: string) => {
+    setFornecedorId(id);
+    fornecedorIdRef.current = id;
+  }, []);
   const [pending, startTransition] = React.useTransition();
 
   const obrasDaEmpresa = obras.filter((o) => o.empresa_id === empresaId);
@@ -59,6 +68,11 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
     fd.set('parcelas_json', JSON.stringify(parcelas));
     fd.set('quem_pagou', quemPagou);
     if (quemPagou === 'socio') fd.set('pago_por_socio_id', pagoSocio);
+    // Use the ref as the source of truth — state may have been reset by an
+    // RSC refresh after the quick-add Server Action.
+    const fornId = fornecedorIdRef.current || fornecedorId;
+    if (fornId) fd.set('fornecedor_id', fornId);
+    else fd.delete('fornecedor_id');
 
     startTransition(async () => {
       const result = await criarCompra(fd);
@@ -116,7 +130,7 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
           <input type="hidden" name="fornecedor_id" value={fornecedorId} />
           <div className="flex items-stretch gap-2">
             <div className="min-w-0 flex-1">
-              <Select value={fornecedorId || '__none__'} onValueChange={(v) => setFornecedorId(v === '__none__' ? '' : v)}>
+              <Select value={fornecedorId || '__none__'} onValueChange={(v) => setFornecedor(v === '__none__' ? '' : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="(opcional)" />
                 </SelectTrigger>
@@ -133,7 +147,7 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
             <FornecedorQuickAddDialog
               onCreated={(novo) => {
                 setFornecedoresList((prev) => [...prev, novo].sort((a, b) => a.nome.localeCompare(b.nome)));
-                setFornecedorId(novo.id);
+                setFornecedor(novo.id);
               }}
             />
           </div>
