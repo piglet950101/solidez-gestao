@@ -47,8 +47,10 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
   // used as the authoritative value at submit time.
   const fornecedorIdRef = React.useRef<string>('');
   const setFornecedor = React.useCallback((id: string) => {
-    setFornecedorId(id);
+    // eslint-disable-next-line no-console
+    console.log('[DEBUG-form] setFornecedor called with:', JSON.stringify(id), 'stack:', new Error().stack?.split('\n').slice(1, 4).join(' | '));
     fornecedorIdRef.current = id;
+    setFornecedorId(id);
   }, []);
   const [pending, startTransition] = React.useTransition();
 
