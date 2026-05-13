@@ -58,6 +58,11 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
     setParcelas((prev) => prev.map((p, i) => ({ ...p, valor: i === 0 ? valorTotal : 0 })));
   }, [valorTotal]);
 
+  React.useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.log('[DEBUG-form] render fornecedorId=', JSON.stringify(fornecedorId), 'ref=', JSON.stringify(fornecedorIdRef.current), 'listLen=', fornecedoresList.length);
+  });
+
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
