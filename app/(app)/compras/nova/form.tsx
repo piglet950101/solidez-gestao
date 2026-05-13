@@ -41,17 +41,15 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
   // Local list of fornecedores so a quick-add can append without page reload
   const [fornecedoresList, setFornecedoresList] = React.useState(fornecedores);
   const [fornecedorId, setFornecedorId] = React.useState<string>('');
-  // Ref shadow of fornecedorId — the React state is reset by Next.js's
-  // automatic route refresh after a Server Action runs (criarFornecedor inside
-  // the quick-add dialog triggers this). The ref survives that refresh and is
-  // used as the authoritative value at submit time.
-  const fornecedorIdRef = React.useRef<string>('');
-  const setFornecedor = React.useCallback((id: string) => {
-    // eslint-disable-next-line no-console
-    console.log('[DEBUG-form] setFornecedor called with:', JSON.stringify(id), 'stack:', new Error().stack?.split('\n').slice(1, 4).join(' | '));
-    fornecedorIdRef.current = id;
-    setFornecedorId(id);
-  }, []);
+  // Radix Select fires onValueChange('') spuriously when the controlled value
+  // changes to an id whose <SelectItem> wasn't in the previous render — which
+  // happens right after the quick-add dialog appends a new fornecedor and sets
+  // fornecedorId in the same batch. That spurious call wipes the freshly-set
+  // FK. So we track real user interaction (dropdown opens) and treat the
+  // Select's state as authoritative only after that. Until then, the dialog
+  // ref is the source of truth.
+  const dialogSetFornIdRef = React.useRef<string>('');
+  const userPickedFornRef = React.useRef<boolean>(false);
   const [pending, startTransition] = React.useTransition();
 
   const obrasDaEmpresa = obras.filter((o) => o.empresa_id === empresaId);
@@ -59,11 +57,6 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
   React.useEffect(() => {
     setParcelas((prev) => prev.map((p, i) => ({ ...p, valor: i === 0 ? valorTotal : 0 })));
   }, [valorTotal]);
-
-  React.useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.log('[DEBUG-form] render fornecedorId=', JSON.stringify(fornecedorId), 'ref=', JSON.stringify(fornecedorIdRef.current), 'listLen=', fornecedoresList.length);
-  });
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -75,9 +68,10 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
     fd.set('parcelas_json', JSON.stringify(parcelas));
     fd.set('quem_pagou', quemPagou);
     if (quemPagou === 'socio') fd.set('pago_por_socio_id', pagoSocio);
-    // Use the ref as the source of truth — state may have been reset by an
-    // RSC refresh after the quick-add Server Action.
-    const fornId = fornecedorIdRef.current || fornecedorId;
+    // If the user explicitly opened the Select after the dialog, trust state.
+    // Otherwise the dialog-set ref is the only reliable source (Radix Select
+    // clobbers fornecedorId state to '' via a spurious onValueChange).
+    const fornId = userPickedFornRef.current ? fornecedorId : (fornecedorId || dialogSetFornIdRef.current);
     if (fornId) fd.set('fornecedor_id', fornId);
     else fd.delete('fornecedor_id');
 
@@ -137,7 +131,11 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
           <input type="hidden" name="fornecedor_id" value={fornecedorId} />
           <div className="flex items-stretch gap-2">
             <div className="min-w-0 flex-1">
-              <Select value={fornecedorId || '__none__'} onValueChange={(v) => setFornecedor(v === '__none__' ? '' : v)}>
+              <Select
+                value={fornecedorId || '__none__'}
+                onOpenChange={(open) => { if (open) userPickedFornRef.current = true; }}
+                onValueChange={(v) => setFornecedorId(v === '__none__' ? '' : v)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="(opcional)" />
                 </SelectTrigger>
@@ -154,7 +152,11 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
             <FornecedorQuickAddDialog
               onCreated={(novo) => {
                 setFornecedoresList((prev) => [...prev, novo].sort((a, b) => a.nome.localeCompare(b.nome)));
-                setFornecedor(novo.id);
+                setFornecedorId(novo.id);
+                // Record the dialog's pick in a ref Radix Select can't clobber.
+                dialogSetFornIdRef.current = novo.id;
+                // Reset the "user picked" flag — the dialog just chose for them.
+                userPickedFornRef.current = false;
               }}
             />
           </div>
