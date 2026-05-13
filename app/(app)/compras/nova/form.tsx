@@ -68,12 +68,28 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
     fd.set('parcelas_json', JSON.stringify(parcelas));
     fd.set('quem_pagou', quemPagou);
     if (quemPagou === 'socio') fd.set('pago_por_socio_id', pagoSocio);
+    else fd.delete('pago_por_socio_id');
+    fd.delete('pago_por_funcionario_id');
     // If the user explicitly opened the Select after the dialog, trust state.
     // Otherwise the dialog-set ref is the only reliable source (Radix Select
     // clobbers fornecedorId state to '' via a spurious onValueChange).
     const fornId = userPickedFornRef.current ? fornecedorId : (fornecedorId || dialogSetFornIdRef.current);
     if (fornId) fd.set('fornecedor_id', fornId);
     else fd.delete('fornecedor_id');
+
+    // Defensive cleanup: strip any value from optional-uuid fields that isn't
+    // a real uuid (e.g. Radix Select placeholders like '__none__', leftover
+    // empty strings, etc). Prevents Zod's "Invalid uuid" rejection on the
+    // server when a stray non-uuid sneaks into the FormData.
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    for (const field of ['fornecedor_id', 'categoria_id', 'pago_por_socio_id', 'pago_por_funcionario_id']) {
+      const v = fd.get(field);
+      if (typeof v !== 'string' || !UUID_RE.test(v)) fd.delete(field);
+    }
+    if (!UUID_RE.test(empresaId)) {
+      toast.error('Selecione uma empresa.');
+      return;
+    }
 
     startTransition(async () => {
       const result = await criarCompra(fd);

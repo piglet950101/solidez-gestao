@@ -42,7 +42,9 @@ export async function criarCompra(formData: FormData): Promise<{ id?: string; er
   const raw = Object.fromEntries(formData.entries());
   const parsed = NovaCompraSchema.safeParse(raw);
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? 'Dados inválidos.' };
+    const issue = parsed.error.issues[0];
+    const field = issue?.path.join('.') || 'campo';
+    return { error: `Erro de validação em "${field}": ${issue?.message ?? 'inválido'}` };
   }
   const { alocacoes_json, parcelas_json, ...rest } = parsed.data;
 
