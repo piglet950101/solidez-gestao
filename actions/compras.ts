@@ -20,6 +20,11 @@ const NovaCompraSchema = z.object({
   formato_pagamento: optionalString,
   observacoes: optionalString,
   veiculo_id: optionalUuid,
+  funcionario_id: optionalUuid,
+  fase_funcionario: z.preprocess(
+    (v) => (typeof v === 'string' && v.trim() === '' ? null : v),
+    z.enum(['admissional', 'recorrente', 'demissional']).nullable().optional(),
+  ),
   alocacoes_json: z.string(),
   parcelas_json: z.string(),
 });
@@ -96,6 +101,11 @@ export async function criarCompra(formData: FormData): Promise<{ id?: string; er
     // 14-arg fn_criar_compra signature for deploys done before the
     // 20260515000001 migration is applied.
     ...(rest.veiculo_id ? { p_veiculo_id: rest.veiculo_id } : {}),
+    // funcionario_id + fase_funcionario need to be passed together (DB has a
+    // CHECK constraint via fn_criar_compra raising on partial input).
+    ...(rest.funcionario_id && rest.fase_funcionario
+      ? { p_funcionario_id: rest.funcionario_id, p_fase_funcionario: rest.fase_funcionario }
+      : {}),
   };
   const { data, error } = await supabase.rpc('fn_criar_compra', rpcParams);
 

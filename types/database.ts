@@ -213,6 +213,8 @@ export type Database = {
           foto_nota_url: string | null;
           observacoes: string | null;
           veiculo_id: string | null;
+          funcionario_id: string | null;
+          fase_funcionario: 'admissional' | 'recorrente' | 'demissional' | null;
           criado_por: string | null;
           criado_em: string;
           atualizado_em: string;
@@ -769,6 +771,8 @@ export type Database = {
           p_alocacoes: Json;
           p_parcelas: Json;
           p_veiculo_id?: string | null;
+          p_funcionario_id?: string | null;
+          p_fase_funcionario?: 'admissional' | 'recorrente' | 'demissional' | null;
         };
         Returns: string;
       };

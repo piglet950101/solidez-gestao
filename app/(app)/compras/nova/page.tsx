@@ -18,6 +18,7 @@ export default async function NovaCompraPage() {
     { data: socios },
     { data: veiculos },
     { data: veiculoAlocacoesRaw },
+    { data: funcionarios },
   ] = await Promise.all([
     supabase.from('empresas').select('id, nome').eq('ativo', true).order('nome'),
     supabase.from('obras').select('id, nome, empresa_id').eq('status', 'ativa').order('nome'),
@@ -33,6 +34,13 @@ export default async function NovaCompraPage() {
       .select('veiculo_id, obra_id, percentual, periodo_inicio, periodo_fim')
       .lte('periodo_inicio', today)
       .or(`periodo_fim.is.null,periodo_fim.gte.${today}`),
+    // Funcionários (não desligados) com snapshots de obra para resolver
+    // apropriação por fase admissional/recorrente/demissional.
+    supabase
+      .from('funcionarios')
+      .select('id, nome, status, obra_admissao_id, obra_atual_id, obra_demissao_id')
+      .neq('status', 'desligado')
+      .order('nome'),
   ]);
 
   if (!empresas?.length) redirect('/');
@@ -50,6 +58,7 @@ export default async function NovaCompraPage() {
             socios={socios ?? []}
             veiculos={veiculos ?? []}
             veiculoAlocacoes={veiculoAlocacoesRaw ?? []}
+            funcionarios={funcionarios ?? []}
           />
         </CardContent>
       </Card>

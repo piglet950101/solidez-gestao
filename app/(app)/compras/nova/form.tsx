@@ -41,6 +41,16 @@ interface VeiculoAlocacaoRow {
   periodo_fim: string | null;
 }
 
+interface FuncionarioOption {
+  id: string;
+  nome: string;
+  obra_admissao_id: string | null;
+  obra_atual_id: string | null;
+  obra_demissao_id: string | null;
+}
+
+type FaseFuncionario = 'admissional' | 'recorrente' | 'demissional';
+
 interface NovaCompraFormProps {
   empresas: Option[];
   obras: Option[];
@@ -49,9 +59,10 @@ interface NovaCompraFormProps {
   socios: Option[];
   veiculos: VeiculoOption[];
   veiculoAlocacoes: VeiculoAlocacaoRow[];
+  funcionarios: FuncionarioOption[];
 }
 
-export function NovaCompraForm({ empresas, obras, fornecedores, categorias, socios, veiculos, veiculoAlocacoes }: NovaCompraFormProps) {
+export function NovaCompraForm({ empresas, obras, fornecedores, categorias, socios, veiculos, veiculoAlocacoes, funcionarios }: NovaCompraFormProps) {
   const router = useRouter();
   const [empresaId, setEmpresaId] = React.useState(empresas[0]?.id ?? '');
   const [valorTotal, setValorTotal] = React.useState(0);
@@ -65,6 +76,8 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
   const [formatoPagamento, setFormatoPagamento] = React.useState<string>('');
   const [categoriaId, setCategoriaId] = React.useState<string>('');
   const [veiculoId, setVeiculoId] = React.useState<string>('');
+  const [funcionarioId, setFuncionarioId] = React.useState<string>('');
+  const [faseFuncionario, setFaseFuncionario] = React.useState<FaseFuncionario>('recorrente');
   // Local list of fornecedores so a quick-add can append without page reload
   const [fornecedoresList, setFornecedoresList] = React.useState(fornecedores);
   const [fornecedorId, setFornecedorId] = React.useState<string>('');
@@ -107,6 +120,23 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
     );
   }, [veiculoId, alocsDoVeiculoAtual]);
 
+  // When user picks a funcionário + fase, resolve the obra according to the
+  // apropriação rule (admissional → obra de origem, recorrente → obra atual,
+  // demissional → última obra) and pre-fill the rateio 100% on it.
+  const funcionarioSelecionado = funcionarios.find((f) => f.id === funcionarioId);
+  const obraResolvidaParaFunc = React.useMemo<string | null>(() => {
+    if (!funcionarioSelecionado) return null;
+    if (faseFuncionario === 'admissional') return funcionarioSelecionado.obra_admissao_id;
+    if (faseFuncionario === 'demissional') return funcionarioSelecionado.obra_demissao_id ?? funcionarioSelecionado.obra_atual_id;
+    return funcionarioSelecionado.obra_atual_id ?? funcionarioSelecionado.obra_admissao_id;
+  }, [funcionarioSelecionado, faseFuncionario]);
+
+  React.useEffect(() => {
+    if (!funcionarioId || !obraResolvidaParaFunc) return;
+    setModoRateio('percentual');
+    setAlocacoes([{ obra_id: obraResolvidaParaFunc, percentual: 100 }]);
+  }, [funcionarioId, obraResolvidaParaFunc]);
+
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
@@ -129,6 +159,18 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
       toast.error('Categoria de veículo: selecione o veículo antes de salvar.');
       return;
     }
+    // funcionário + fase: precisam vir juntos (DB exige consistência)
+    if (funcionarioId) {
+      fd.set('funcionario_id', funcionarioId);
+      fd.set('fase_funcionario', faseFuncionario);
+      if (!obraResolvidaParaFunc) {
+        toast.error('Funcionário sem obra na fase escolhida — vincule-o a uma obra antes ou ajuste o rateio manualmente.');
+        return;
+      }
+    } else {
+      fd.delete('funcionario_id');
+      fd.delete('fase_funcionario');
+    }
     // If the user explicitly opened the Select after the dialog, trust state.
     // Otherwise the dialog-set ref is the only reliable source (Radix Select
     // clobbers fornecedorId state to '' via a spurious onValueChange).
@@ -141,7 +183,7 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
     // empty strings, etc). Prevents Zod's "Invalid uuid" rejection on the
     // server when a stray non-uuid sneaks into the FormData.
     const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    for (const field of ['fornecedor_id', 'categoria_id', 'pago_por_socio_id', 'pago_por_funcionario_id', 'veiculo_id']) {
+    for (const field of ['fornecedor_id', 'categoria_id', 'pago_por_socio_id', 'pago_por_funcionario_id', 'veiculo_id', 'funcionario_id']) {
       const v = fd.get(field);
       if (typeof v !== 'string' || !UUID_RE.test(v)) fd.delete(field);
     }
@@ -324,6 +366,56 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
             </Select>
           </div>
         )}
+      </div>
+
+      <div className="space-y-2 rounded-[14px] border border-brand-100 bg-brand-50/30 p-4">
+        <h3 className="text-sm font-semibold uppercase tracking-widest text-brand-600">Despesa de funcionário (opcional)</h3>
+        <p className="text-xs text-brand-600">
+          Marque quando a despesa é vinculada a um colaborador — o rateio é pré-preenchido conforme a obra dele na fase escolhida
+          (admissional → obra de origem, recorrente → obra atual, demissional → última obra).
+        </p>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label>Funcionário</Label>
+            <Select
+              value={funcionarioId || '__none__'}
+              onValueChange={(v) => setFuncionarioId(v === '__none__' ? '' : v)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="(não vinculada a funcionário)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">— não vinculada —</SelectItem>
+                {funcionarios.map((f) => (
+                  <SelectItem key={f.id} value={f.id}>
+                    {f.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {funcionarioId ? (
+            <div className="space-y-1.5">
+              <Label>Fase do custo</Label>
+              <Select value={faseFuncionario} onValueChange={(v) => setFaseFuncionario(v as FaseFuncionario)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admissional">Admissional — fica na obra de origem</SelectItem>
+                  <SelectItem value="recorrente">Recorrente — segue a obra atual</SelectItem>
+                  <SelectItem value="demissional">Demissional — fica na última obra</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
+        </div>
+        {funcionarioId && !obraResolvidaParaFunc ? (
+          <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            O funcionário escolhido ainda não tem obra na fase selecionada. Vincule-o a uma obra primeiro (em /funcionarios)
+            ou ajuste o rateio manualmente abaixo.
+          </p>
+        ) : null}
       </div>
 
       <div className="space-y-2">
