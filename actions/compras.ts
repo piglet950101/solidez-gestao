@@ -101,7 +101,12 @@ export async function criarCompra(formData: FormData): Promise<{ id?: string; er
 
 export async function atualizarCompraBasico(
   id: string,
-  data: { data_compra: string; descricao: string; observacoes: string | null },
+  data: {
+    data_compra: string;
+    descricao: string;
+    observacoes: string | null;
+    formato_pagamento?: string | null;
+  },
 ) {
   const supabase = await createClient();
   const { error } = await supabase
@@ -110,6 +115,7 @@ export async function atualizarCompraBasico(
       data_compra: data.data_compra,
       descricao: data.descricao,
       observacoes: data.observacoes ?? null,
+      formato_pagamento: data.formato_pagamento ?? null,
     })
     .eq('id', id);
   if (error) return { error: error.message };

@@ -10,6 +10,7 @@ import { ConfirmDeleteDialog } from '@/components/ui/confirm-delete-dialog';
 import { excluirCompra } from '@/actions/compras';
 import { EditarCompraBasicoForm } from './form';
 import { formatBRL, formatDate } from '@/lib/format';
+import { formatoPagamentoLabel } from '@/lib/formato-pagamento';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,6 +78,9 @@ export default async function CompraDetailPage({ params }: { params: Promise<{ i
               <Row label="Valor total" value={formatBRL(compra.valor_total)} mono />
               <Row label="Modo de rateio" value={String(compra.rateio_modo).toUpperCase()} />
               <Row label="Quem pagou" value={String(compra.quem_pagou).toUpperCase()} />
+              {compra.formato_pagamento ? (
+                <Row label="Forma de pagamento" value={formatoPagamentoLabel(compra.formato_pagamento) ?? '—'} />
+              ) : null}
               {categoria ? <Row label="Categoria" value={categoria.nome} /> : null}
             </CardContent>
           </Card>

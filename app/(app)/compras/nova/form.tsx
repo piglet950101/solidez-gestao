@@ -12,6 +12,7 @@ import { ParcelasEditor } from '@/components/compras/parcelas-editor';
 import { FornecedorQuickAddDialog } from '@/components/fornecedores/quick-add-dialog';
 import { criarCompra } from '@/actions/compras';
 import { gerarParcelas, type RateioInputObra, type RateioModo } from '@/lib/rateio';
+import { FORMATOS_PAGAMENTO } from '@/lib/formato-pagamento';
 
 interface Option {
   id: string;
@@ -38,6 +39,7 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
   );
   const [quemPagou, setQuemPagou] = React.useState<'empresa' | 'socio' | 'funcionario'>('empresa');
   const [pagoSocio, setPagoSocio] = React.useState<string>('');
+  const [formatoPagamento, setFormatoPagamento] = React.useState<string>('');
   // Local list of fornecedores so a quick-add can append without page reload
   const [fornecedoresList, setFornecedoresList] = React.useState(fornecedores);
   const [fornecedorId, setFornecedorId] = React.useState<string>('');
@@ -70,6 +72,8 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
     if (quemPagou === 'socio') fd.set('pago_por_socio_id', pagoSocio);
     else fd.delete('pago_por_socio_id');
     fd.delete('pago_por_funcionario_id');
+    if (formatoPagamento) fd.set('formato_pagamento', formatoPagamento);
+    else fd.delete('formato_pagamento');
     // If the user explicitly opened the Select after the dialog, trust state.
     // Otherwise the dialog-set ref is the only reliable source (Radix Select
     // clobbers fornecedorId state to '' via a spurious onValueChange).
@@ -188,6 +192,26 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
               <SelectItem value="empresa">Empresa (CNPJ)</SelectItem>
               <SelectItem value="socio">Sócio do bolso (gera reembolso)</SelectItem>
               <SelectItem value="funcionario">Funcionário (gera reembolso)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Forma de pagamento</Label>
+          <Select
+            value={formatoPagamento || '__none__'}
+            onValueChange={(v) => setFormatoPagamento(v === '__none__' ? '' : v)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="(opcional)" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">— não informado —</SelectItem>
+              {FORMATOS_PAGAMENTO.map((f) => (
+                <SelectItem key={f.value} value={f.value}>
+                  {f.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
