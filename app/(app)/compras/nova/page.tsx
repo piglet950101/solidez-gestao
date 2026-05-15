@@ -19,6 +19,7 @@ export default async function NovaCompraPage() {
     { data: veiculos },
     { data: veiculoAlocacoesRaw },
     { data: funcionarios },
+    { data: itens },
   ] = await Promise.all([
     supabase.from('empresas').select('id, nome').eq('ativo', true).order('nome'),
     supabase.from('obras').select('id, nome, empresa_id').eq('status', 'ativa').order('nome'),
@@ -41,6 +42,7 @@ export default async function NovaCompraPage() {
       .select('id, nome, status, obra_admissao_id, obra_atual_id, obra_demissao_id')
       .neq('status', 'desligado')
       .order('nome'),
+    supabase.from('itens').select('id, nome, unidade, valor_medio').eq('ativo', true).order('nome'),
   ]);
 
   if (!empresas?.length) redirect('/');
@@ -59,6 +61,7 @@ export default async function NovaCompraPage() {
             veiculos={veiculos ?? []}
             veiculoAlocacoes={veiculoAlocacoesRaw ?? []}
             funcionarios={funcionarios ?? []}
+            itens={itens ?? []}
           />
         </CardContent>
       </Card>

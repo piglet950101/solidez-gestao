@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Textarea } from '@/components/ui/input';
@@ -49,7 +50,15 @@ interface FuncionarioOption {
   obra_demissao_id: string | null;
 }
 
+interface ItemOption {
+  id: string;
+  nome: string;
+  unidade: string;
+  valor_medio: number | null;
+}
+
 type FaseFuncionario = 'admissional' | 'recorrente' | 'demissional';
+type CompraItemLine = { item_id: string; quantidade: number; valor_unitario: number };
 
 interface NovaCompraFormProps {
   empresas: Option[];
@@ -60,9 +69,10 @@ interface NovaCompraFormProps {
   veiculos: VeiculoOption[];
   veiculoAlocacoes: VeiculoAlocacaoRow[];
   funcionarios: FuncionarioOption[];
+  itens: ItemOption[];
 }
 
-export function NovaCompraForm({ empresas, obras, fornecedores, categorias, socios, veiculos, veiculoAlocacoes, funcionarios }: NovaCompraFormProps) {
+export function NovaCompraForm({ empresas, obras, fornecedores, categorias, socios, veiculos, veiculoAlocacoes, funcionarios, itens }: NovaCompraFormProps) {
   const router = useRouter();
   const [empresaId, setEmpresaId] = React.useState(empresas[0]?.id ?? '');
   const [valorTotal, setValorTotal] = React.useState(0);
@@ -78,6 +88,7 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
   const [veiculoId, setVeiculoId] = React.useState<string>('');
   const [funcionarioId, setFuncionarioId] = React.useState<string>('');
   const [faseFuncionario, setFaseFuncionario] = React.useState<FaseFuncionario>('recorrente');
+  const [linhasItens, setLinhasItens] = React.useState<CompraItemLine[]>([]);
   // Local list of fornecedores so a quick-add can append without page reload
   const [fornecedoresList, setFornecedoresList] = React.useState(fornecedores);
   const [fornecedorId, setFornecedorId] = React.useState<string>('');
@@ -158,6 +169,20 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
     if (categoriaExigeVeiculo && !veiculoId) {
       toast.error('Categoria de veículo: selecione o veículo antes de salvar.');
       return;
+    }
+    // Item lines (opcional)
+    fd.set('itens_json', JSON.stringify(linhasItens));
+    if (linhasItens.length > 0) {
+      const soma = linhasItens.reduce((s, l) => s + (Number(l.quantidade) || 0) * (Number(l.valor_unitario) || 0), 0);
+      if (Math.abs(soma - valorTotal) > 0.05) {
+        toast.error(`Soma das linhas (R$ ${soma.toFixed(2)}) difere do valor total (R$ ${valorTotal.toFixed(2)}). Ajuste antes de salvar.`);
+        return;
+      }
+      const linhaInvalida = linhasItens.find((l) => !l.item_id || l.quantidade <= 0);
+      if (linhaInvalida) {
+        toast.error('Linhas de item: selecione o item e informe quantidade > 0 em todas as linhas.');
+        return;
+      }
     }
     // funcionário + fase: precisam vir juntos (DB exige consistência)
     if (funcionarioId) {
@@ -414,6 +439,97 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
           <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
             O funcionário escolhido ainda não tem obra na fase selecionada. Vincule-o a uma obra primeiro (em /funcionarios)
             ou ajuste o rateio manualmente abaixo.
+          </p>
+        ) : null}
+      </div>
+
+      <div className="space-y-2 rounded-[14px] border border-brand-100 bg-brand-50/30 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold uppercase tracking-widest text-brand-600">Itens da NF (opcional)</h3>
+          <div className="text-xs text-brand-500">
+            Soma das linhas: <span className={Math.abs(linhasItens.reduce((s, l) => s + l.quantidade * l.valor_unitario, 0) - valorTotal) <= 0.05 && linhasItens.length > 0 ? 'font-mono font-semibold text-emerald-700' : 'font-mono text-brand-700'}>
+              R$ {linhasItens.reduce((s, l) => s + l.quantidade * l.valor_unitario, 0).toFixed(2)}
+            </span>
+            <span className="ml-2 text-brand-500">/ R$ {valorTotal.toFixed(2)}</span>
+          </div>
+        </div>
+        <p className="text-xs text-brand-600">
+          Detalhe linha por linha quando a NF tem múltiplos itens. Ao salvar, cada item entra no estoque automaticamente com seu custo unitário.
+          Se preferir uma compra sem detalhamento (ex.: serviço), deixe em branco.
+        </p>
+        {linhasItens.map((linha, idx) => {
+          const itemSel = itens.find((i) => i.id === linha.item_id);
+          return (
+            <div key={idx} className="grid grid-cols-12 items-end gap-2">
+              <div className="col-span-5">
+                <Label className="text-xs">{idx === 0 ? 'Item' : ''}</Label>
+                <Select
+                  value={linha.item_id || '__none__'}
+                  onValueChange={(v) => {
+                    const novo = v === '__none__' ? '' : v;
+                    const it = itens.find((i) => i.id === novo);
+                    setLinhasItens(linhasItens.map((l, i) => i === idx ? { ...l, item_id: novo, valor_unitario: l.valor_unitario || (it?.valor_medio ?? 0) } : l));
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— selecione —</SelectItem>
+                    {itens.map((it) => (
+                      <SelectItem key={it.id} value={it.id}>
+                        {it.nome} ({it.unidade})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="col-span-3">
+                <Label className="text-xs">{idx === 0 ? `Qtd${itemSel ? ` (${itemSel.unidade})` : ''}` : ''}</Label>
+                <input
+                  type="number"
+                  step="0.001"
+                  min="0"
+                  value={linha.quantidade || ''}
+                  onChange={(e) => setLinhasItens(linhasItens.map((l, i) => i === idx ? { ...l, quantidade: Number(e.target.value) } : l))}
+                  className="block w-full rounded-md border border-brand-200 bg-white px-3 py-2 font-mono text-sm"
+                />
+              </div>
+              <div className="col-span-3">
+                <Label className="text-xs">{idx === 0 ? 'Valor unitário (R$)' : ''}</Label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={linha.valor_unitario || ''}
+                  onChange={(e) => setLinhasItens(linhasItens.map((l, i) => i === idx ? { ...l, valor_unitario: Number(e.target.value) } : l))}
+                  className="block w-full rounded-md border border-brand-200 bg-white px-3 py-2 font-mono text-sm"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="col-span-1"
+                onClick={() => setLinhasItens(linhasItens.filter((_, i) => i !== idx))}
+                aria-label="Remover linha"
+              >
+                ✕
+              </Button>
+            </div>
+          );
+        })}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setLinhasItens([...linhasItens, { item_id: '', quantidade: 1, valor_unitario: 0 }])}
+        >
+          + Adicionar item
+        </Button>
+        {itens.length === 0 ? (
+          <p className="text-xs text-amber-700">
+            Nenhum item cadastrado ainda. Cadastre itens em <Link href="/itens/novo" className="underline">/itens/novo</Link> antes de detalhar a NF.
           </p>
         ) : null}
       </div>

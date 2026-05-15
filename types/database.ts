@@ -474,6 +474,87 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['funcionario_documentos']['Insert']>;
         Relationships: [];
       };
+      itens: {
+        Row: {
+          id: string;
+          nome: string;
+          codigo_interno: string | null;
+          unidade: string;
+          categoria_id: string | null;
+          valor_medio: number | null;
+          saldo_atual: number;
+          estoque_minimo: number | null;
+          controla_validade: boolean;
+          eh_epi: boolean;
+          ativo: boolean;
+          observacoes: string | null;
+          criado_em: string;
+          atualizado_em: string;
+        };
+        Insert: {
+          id?: string;
+          nome: string;
+          codigo_interno?: string | null;
+          unidade: string;
+          categoria_id?: string | null;
+          estoque_minimo?: number | null;
+          controla_validade?: boolean;
+          eh_epi?: boolean;
+          ativo?: boolean;
+          observacoes?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['itens']['Insert']>;
+        Relationships: [];
+      };
+      itens_movimentacoes: {
+        Row: {
+          id: string;
+          item_id: string;
+          tipo: 'entrada_compra' | 'saida_requisicao' | 'saida_epi' | 'ajuste_positivo' | 'ajuste_negativo' | 'devolucao';
+          quantidade: number;
+          valor_unitario: number | null;
+          obra_id: string | null;
+          origem_tipo: string | null;
+          origem_id: string | null;
+          observacao: string | null;
+          criado_por: string | null;
+          criado_em: string;
+        };
+        Insert: {
+          id?: string;
+          item_id: string;
+          tipo: 'entrada_compra' | 'saida_requisicao' | 'saida_epi' | 'ajuste_positivo' | 'ajuste_negativo' | 'devolucao';
+          quantidade: number;
+          valor_unitario?: number | null;
+          obra_id?: string | null;
+          origem_tipo?: string | null;
+          origem_id?: string | null;
+          observacao?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['itens_movimentacoes']['Insert']>;
+        Relationships: [];
+      };
+      compra_itens: {
+        Row: {
+          id: string;
+          compra_id: string;
+          item_id: string;
+          quantidade: number;
+          valor_unitario: number;
+          valor_total: number;
+          observacao: string | null;
+        };
+        Insert: {
+          id?: string;
+          compra_id: string;
+          item_id: string;
+          quantidade: number;
+          valor_unitario: number;
+          observacao?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['compra_itens']['Insert']>;
+        Relationships: [];
+      };
       lancamentos_folha: {
         Row: {
           id: string;
