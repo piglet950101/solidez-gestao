@@ -172,9 +172,10 @@ export type Database = {
           icone: string | null;
           ativo: boolean;
           ordem: number;
+          subtipo: string | null;
           criado_em: string;
         };
-        Insert: { id?: string; nome: string; tipo?: CategoriaTipo; cor?: string | null; icone?: string | null; ativo?: boolean; ordem?: number };
+        Insert: { id?: string; nome: string; tipo?: CategoriaTipo; cor?: string | null; icone?: string | null; ativo?: boolean; ordem?: number; subtipo?: string | null };
         Update: Partial<Database['public']['Tables']['categorias']['Insert']>;
         Relationships: [];
       };
@@ -211,6 +212,7 @@ export type Database = {
           formato_pagamento: string | null;
           foto_nota_url: string | null;
           observacoes: string | null;
+          veiculo_id: string | null;
           criado_por: string | null;
           criado_em: string;
           atualizado_em: string;
@@ -713,6 +715,7 @@ export type Database = {
           p_foto_nota_url: string | null;
           p_alocacoes: Json;
           p_parcelas: Json;
+          p_veiculo_id?: string | null;
         };
         Returns: string;
       };
@@ -727,6 +730,10 @@ export type Database = {
       fn_gerar_alertas_diarios: {
         Args: Record<string, never>;
         Returns: number;
+      };
+      fn_transferir_veiculo: {
+        Args: { p_veiculo_id: string; p_nova_obra_id: string; p_data_transferencia: string; p_observacao: string | null };
+        Returns: string;
       };
     };
     Enums: {

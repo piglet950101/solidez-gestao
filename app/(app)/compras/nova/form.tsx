@@ -13,6 +13,7 @@ import { FornecedorQuickAddDialog } from '@/components/fornecedores/quick-add-di
 import { criarCompra } from '@/actions/compras';
 import { gerarParcelas, type RateioInputObra, type RateioModo } from '@/lib/rateio';
 import { FORMATOS_PAGAMENTO } from '@/lib/formato-pagamento';
+import { isSubtipoVeiculo } from '@/lib/categoria-subtipos';
 
 interface Option {
   id: string;
@@ -20,15 +21,37 @@ interface Option {
   empresa_id?: string;
 }
 
+interface CategoriaOption {
+  id: string;
+  nome: string;
+  subtipo?: string | null;
+}
+
+interface VeiculoOption {
+  id: string;
+  placa: string;
+  modelo: string;
+}
+
+interface VeiculoAlocacaoRow {
+  veiculo_id: string;
+  obra_id: string;
+  percentual: number;
+  periodo_inicio: string;
+  periodo_fim: string | null;
+}
+
 interface NovaCompraFormProps {
   empresas: Option[];
   obras: Option[];
   fornecedores: Option[];
-  categorias: Option[];
+  categorias: CategoriaOption[];
   socios: Option[];
+  veiculos: VeiculoOption[];
+  veiculoAlocacoes: VeiculoAlocacaoRow[];
 }
 
-export function NovaCompraForm({ empresas, obras, fornecedores, categorias, socios }: NovaCompraFormProps) {
+export function NovaCompraForm({ empresas, obras, fornecedores, categorias, socios, veiculos, veiculoAlocacoes }: NovaCompraFormProps) {
   const router = useRouter();
   const [empresaId, setEmpresaId] = React.useState(empresas[0]?.id ?? '');
   const [valorTotal, setValorTotal] = React.useState(0);
@@ -40,6 +63,8 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
   const [quemPagou, setQuemPagou] = React.useState<'empresa' | 'socio' | 'funcionario'>('empresa');
   const [pagoSocio, setPagoSocio] = React.useState<string>('');
   const [formatoPagamento, setFormatoPagamento] = React.useState<string>('');
+  const [categoriaId, setCategoriaId] = React.useState<string>('');
+  const [veiculoId, setVeiculoId] = React.useState<string>('');
   // Local list of fornecedores so a quick-add can append without page reload
   const [fornecedoresList, setFornecedoresList] = React.useState(fornecedores);
   const [fornecedorId, setFornecedorId] = React.useState<string>('');
@@ -56,9 +81,31 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
 
   const obrasDaEmpresa = obras.filter((o) => o.empresa_id === empresaId);
 
+  const categoriaSelecionada = categorias.find((c) => c.id === categoriaId);
+  const categoriaExigeVeiculo = isSubtipoVeiculo(categoriaSelecionada?.subtipo ?? null);
+
+  // Current allocations of the selected veículo (today). Used to auto-fill rateio.
+  const alocsDoVeiculoAtual = React.useMemo(() => {
+    if (!veiculoId) return [] as VeiculoAlocacaoRow[];
+    return veiculoAlocacoes.filter((a) => a.veiculo_id === veiculoId);
+  }, [veiculoId, veiculoAlocacoes]);
+
   React.useEffect(() => {
     setParcelas((prev) => prev.map((p, i) => ({ ...p, valor: i === 0 ? valorTotal : 0 })));
   }, [valorTotal]);
+
+  // When user picks a veículo, pre-fill the rateio with the obra(s) currently
+  // allocated to it. User can still edit after — Débora's request was to
+  // "automatically lançar o custo na obra do veículo", with manual override
+  // as a safety net.
+  React.useEffect(() => {
+    if (!veiculoId || alocsDoVeiculoAtual.length === 0) return;
+    // Map veículo's allocations into rateio "percentual" mode entries.
+    setModoRateio('percentual');
+    setAlocacoes(
+      alocsDoVeiculoAtual.map((a) => ({ obra_id: a.obra_id, percentual: Number(a.percentual) })),
+    );
+  }, [veiculoId, alocsDoVeiculoAtual]);
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -74,6 +121,14 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
     fd.delete('pago_por_funcionario_id');
     if (formatoPagamento) fd.set('formato_pagamento', formatoPagamento);
     else fd.delete('formato_pagamento');
+    if (categoriaId) fd.set('categoria_id', categoriaId);
+    else fd.delete('categoria_id');
+    if (veiculoId) fd.set('veiculo_id', veiculoId);
+    else fd.delete('veiculo_id');
+    if (categoriaExigeVeiculo && !veiculoId) {
+      toast.error('Categoria de veículo: selecione o veículo antes de salvar.');
+      return;
+    }
     // If the user explicitly opened the Select after the dialog, trust state.
     // Otherwise the dialog-set ref is the only reliable source (Radix Select
     // clobbers fornecedorId state to '' via a spurious onValueChange).
@@ -86,7 +141,7 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
     // empty strings, etc). Prevents Zod's "Invalid uuid" rejection on the
     // server when a stray non-uuid sneaks into the FormData.
     const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    for (const field of ['fornecedor_id', 'categoria_id', 'pago_por_socio_id', 'pago_por_funcionario_id']) {
+    for (const field of ['fornecedor_id', 'categoria_id', 'pago_por_socio_id', 'pago_por_funcionario_id', 'veiculo_id']) {
       const v = fd.get(field);
       if (typeof v !== 'string' || !UUID_RE.test(v)) fd.delete(field);
     }
@@ -132,11 +187,15 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
 
         <div className="space-y-1.5">
           <Label>Categoria</Label>
-          <Select name="categoria_id">
+          <Select
+            value={categoriaId || '__none__'}
+            onValueChange={(v) => setCategoriaId(v === '__none__' ? '' : v)}
+          >
             <SelectTrigger>
               <SelectValue placeholder="(opcional)" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="__none__">— sem categoria —</SelectItem>
               {categorias.map((c) => (
                 <SelectItem key={c.id} value={c.id}>
                   {c.nome}
@@ -144,6 +203,38 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
               ))}
             </SelectContent>
           </Select>
+          {categoriaExigeVeiculo ? (
+            <p className="text-xs text-brand-600">
+              Esta categoria é de veículo — selecione o veículo abaixo. O custo cai automaticamente na obra do veículo.
+            </p>
+          ) : null}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>
+            Veículo{categoriaExigeVeiculo ? <span className="ml-1 text-red-600">*</span> : null}
+          </Label>
+          <Select
+            value={veiculoId || '__none__'}
+            onValueChange={(v) => setVeiculoId(v === '__none__' ? '' : v)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={categoriaExigeVeiculo ? 'Obrigatório' : '(opcional)'} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">— sem veículo —</SelectItem>
+              {veiculos.map((v) => (
+                <SelectItem key={v.id} value={v.id}>
+                  {v.placa} · {v.modelo}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {veiculoId && alocsDoVeiculoAtual.length === 0 ? (
+            <p className="text-xs text-amber-700">
+              Atenção: este veículo não está vinculado a nenhuma obra hoje. Vincule em Veículos antes ou edite o rateio manualmente.
+            </p>
+          ) : null}
         </div>
 
         <div className="space-y-1.5">

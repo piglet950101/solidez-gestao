@@ -87,3 +87,56 @@ export async function registrarVeiculoCusto(formData: FormData) {
   revalidatePath(`/veiculos/${parsed.data.veiculo_id}`);
   return {};
 }
+
+/**
+ * Returns the obra(s) currently allocated to a given veículo on a given date.
+ * Reads veiculo_alocacoes (period-based) and is used to pre-fill compra rateio
+ * when a veículo is selected on /compras/nova.
+ */
+export async function obrasAtuaisDoVeiculo(
+  veiculo_id: string,
+  data: string = new Date().toISOString().slice(0, 10),
+): Promise<{ obra_id: string; percentual: number; obra_nome: string }[]> {
+  const supabase = await createClient();
+  const { data: alocs } = await supabase
+    .from('veiculo_alocacoes')
+    .select('obra_id, percentual, periodo_inicio, periodo_fim, obras(nome)')
+    .eq('veiculo_id', veiculo_id)
+    .lte('periodo_inicio', data)
+    .or(`periodo_fim.is.null,periodo_fim.gte.${data}`);
+  return (alocs ?? []).map((a) => ({
+    obra_id: a.obra_id,
+    percentual: Number(a.percentual),
+    obra_nome: (a as unknown as { obras?: { nome: string } }).obras?.nome ?? '—',
+  }));
+}
+
+const TransferirSchema = z.object({
+  nova_obra_id: z.string().uuid(),
+  data_transferencia: z.string(),
+  observacao: optionalString,
+});
+
+/**
+ * Transferir veículo para outra obra: chama fn_transferir_veiculo que encerra
+ * alocações ativas no dia anterior e cria uma nova alocação 100% na obra
+ * destino a partir da data informada.
+ */
+export async function transferirVeiculo(veiculo_id: string, formData: FormData) {
+  const parsed = TransferirSchema.safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return { error: issue ? `${issue.path.join('.')}: ${issue.message}` : 'Dados inválidos.' };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('fn_transferir_veiculo', {
+    p_veiculo_id: veiculo_id,
+    p_nova_obra_id: parsed.data.nova_obra_id,
+    p_data_transferencia: parsed.data.data_transferencia,
+    p_observacao: parsed.data.observacao ?? null,
+  });
+  if (error) return { error: error.message };
+  revalidatePath('/veiculos');
+  revalidatePath(`/veiculos/${veiculo_id}`);
+  return {};
+}

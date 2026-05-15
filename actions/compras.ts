@@ -19,6 +19,7 @@ const NovaCompraSchema = z.object({
   pago_por_funcionario_id: optionalUuid,
   formato_pagamento: optionalString,
   observacoes: optionalString,
+  veiculo_id: optionalUuid,
   alocacoes_json: z.string(),
   parcelas_json: z.string(),
 });
@@ -76,7 +77,7 @@ export async function criarCompra(formData: FormData): Promise<{ id?: string; er
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc('fn_criar_compra', {
+  const rpcParams = {
     p_empresa_id: rest.empresa_id,
     p_fornecedor_id: rest.fornecedor_id ?? null,
     p_categoria_id: rest.categoria_id ?? null,
@@ -88,10 +89,15 @@ export async function criarCompra(formData: FormData): Promise<{ id?: string; er
     p_pago_por_socio_id: rest.pago_por_socio_id ?? null,
     p_pago_por_funcionario_id: rest.pago_por_funcionario_id ?? null,
     p_formato_pagamento: rest.formato_pagamento ?? null,
-    p_foto_nota_url: null,
+    p_foto_nota_url: null as string | null,
     p_alocacoes: alocacoesCalc as unknown as Json,
     p_parcelas: parcelasInput as unknown as Json,
-  });
+    // Only pass p_veiculo_id when set — keeps backward compatibility with the
+    // 14-arg fn_criar_compra signature for deploys done before the
+    // 20260515000001 migration is applied.
+    ...(rest.veiculo_id ? { p_veiculo_id: rest.veiculo_id } : {}),
+  };
+  const { data, error } = await supabase.rpc('fn_criar_compra', rpcParams);
 
   if (error) return { error: error.message };
   revalidatePath('/compras');
