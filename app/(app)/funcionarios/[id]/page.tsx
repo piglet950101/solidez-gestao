@@ -7,6 +7,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { FuncionarioForm } from '../form';
 import { DesligarFuncionarioDialog } from '@/components/funcionarios/desligar-dialog';
+import { VinculoObraCard } from './vinculo-obra';
+import { DocumentosFuncionario } from './documentos';
 import { formatDate } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
@@ -18,14 +20,39 @@ export default async function EditarFuncionarioPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
-  const { data: funcionario } = await supabase
-    .from('funcionarios')
-    .select('*')
-    .eq('id', id)
-    .maybeSingle();
+  const [{ data: funcionario }, { data: obras }, { data: historicoRaw }, { data: documentos }] = await Promise.all([
+    supabase.from('funcionarios').select('*').eq('id', id).maybeSingle(),
+    supabase.from('obras').select('id, nome, status').order('nome'),
+    supabase
+      .from('funcionario_obra_historico')
+      .select('id, obra_id, data_inicio, data_fim, motivo, obras(nome)')
+      .eq('funcionario_id', id)
+      .order('data_inicio', { ascending: false }),
+    supabase
+      .from('funcionario_documentos')
+      .select('id, tipo, descricao, storage_path, validade, criado_em')
+      .eq('funcionario_id', id)
+      .order('criado_em', { ascending: false }),
+  ]);
   if (!funcionario) notFound();
 
   const desligado = funcionario.status === 'desligado';
+
+  type ObraRef = { id: string; nome: string; status?: string };
+  const obrasList = (obras ?? []) as ObraRef[];
+  const obrasAtivas = obrasList.filter((o) => o.status === 'ativa');
+  const obraNomeById = (oid: string | null | undefined) => (oid ? obrasList.find((o) => o.id === oid)?.nome ?? null : null);
+  const fAny = funcionario as unknown as { obra_admissao_id: string | null; obra_atual_id: string | null; obra_demissao_id: string | null };
+
+  type HistRow = { id: string; obra_id: string; data_inicio: string; data_fim: string | null; motivo: 'admissao' | 'transferencia' | 'demissao'; obras: { nome: string } | null };
+  const historico = ((historicoRaw ?? []) as unknown as HistRow[]).map((h) => ({
+    id: h.id,
+    obra_id: h.obra_id,
+    data_inicio: h.data_inicio,
+    data_fim: h.data_fim,
+    motivo: h.motivo,
+    obra_nome: h.obras?.nome ?? '—',
+  }));
 
   return (
     <div className="space-y-6">
@@ -53,6 +80,22 @@ export default async function EditarFuncionarioPage({
           )
         }
       />
+
+      <VinculoObraCard
+        funcionarioId={funcionario.id}
+        funcionarioStatus={funcionario.status}
+        obraAdmissaoNome={obraNomeById(fAny.obra_admissao_id)}
+        obraAtualNome={obraNomeById(fAny.obra_atual_id)}
+        obraDemissaoNome={obraNomeById(fAny.obra_demissao_id)}
+        historico={historico}
+        obras={obrasAtivas.map((o) => ({ id: o.id, nome: o.nome }))}
+      />
+
+      <DocumentosFuncionario
+        funcionarioId={funcionario.id}
+        documentos={(documentos ?? []) as { id: string; tipo: string; descricao: string | null; storage_path: string; validade: string | null; criado_em: string }[]}
+      />
+
       <Card>
         <CardContent className="py-6">
           <FuncionarioForm funcionario={funcionario} />

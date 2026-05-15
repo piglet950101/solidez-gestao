@@ -389,6 +389,9 @@ export type Database = {
           cabeca_de_empreitada: boolean;
           experiencia_dias_1: number | null;
           experiencia_dias_2: number | null;
+          obra_admissao_id: string | null;
+          obra_atual_id: string | null;
+          obra_demissao_id: string | null;
           criado_em: string;
           atualizado_em: string;
         };
@@ -416,8 +419,57 @@ export type Database = {
           observacoes?: string | null;
           experiencia_dias_1?: number | null;
           experiencia_dias_2?: number | null;
+          obra_admissao_id?: string | null;
+          obra_atual_id?: string | null;
+          obra_demissao_id?: string | null;
         };
         Update: Partial<Database['public']['Tables']['funcionarios']['Insert']>;
+        Relationships: [];
+      };
+      funcionario_obra_historico: {
+        Row: {
+          id: string;
+          funcionario_id: string;
+          obra_id: string;
+          data_inicio: string;
+          data_fim: string | null;
+          motivo: 'admissao' | 'transferencia' | 'demissao';
+          observacao: string | null;
+          criado_por: string | null;
+          criado_em: string;
+        };
+        Insert: {
+          id?: string;
+          funcionario_id: string;
+          obra_id: string;
+          data_inicio: string;
+          data_fim?: string | null;
+          motivo: 'admissao' | 'transferencia' | 'demissao';
+          observacao?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['funcionario_obra_historico']['Insert']>;
+        Relationships: [];
+      };
+      funcionario_documentos: {
+        Row: {
+          id: string;
+          funcionario_id: string;
+          tipo: string;
+          descricao: string | null;
+          storage_path: string;
+          validade: string | null;
+          criado_por: string | null;
+          criado_em: string;
+        };
+        Insert: {
+          id?: string;
+          funcionario_id: string;
+          tipo: string;
+          descricao?: string | null;
+          storage_path: string;
+          validade?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['funcionario_documentos']['Insert']>;
         Relationships: [];
       };
       lancamentos_folha: {
@@ -735,6 +787,18 @@ export type Database = {
       fn_transferir_veiculo: {
         Args: { p_veiculo_id: string; p_nova_obra_id: string; p_data_transferencia: string; p_observacao: string | null };
         Returns: string;
+      };
+      fn_transferir_funcionario: {
+        Args: { p_funcionario_id: string; p_nova_obra_id: string; p_data_transferencia: string; p_observacao: string | null };
+        Returns: string;
+      };
+      fn_desligar_funcionario: {
+        Args: { p_funcionario_id: string; p_data_desligamento: string; p_observacao: string | null };
+        Returns: undefined;
+      };
+      fn_custo_fixo_alocacoes_efetivas: {
+        Args: { p_custo_fixo_id: string; p_mes_referencia?: string };
+        Returns: { obra_id: string; percentual: number; valor: number }[];
       };
     };
     Enums: {
