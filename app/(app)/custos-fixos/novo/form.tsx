@@ -13,17 +13,20 @@ interface Empresa { id: string; nome: string }
 interface Obra { id: string; nome: string; empresa_id: string }
 interface Categoria { id: string; nome: string }
 
+type ModoRateio = 'manual' | 'igual_obras_ativas' | 'proporcional_faturamento';
+
 export function NovoCustoFixoForm({ empresas, obras, categorias }: { empresas: Empresa[]; obras: Obra[]; categorias: Categoria[] }) {
   const router = useRouter();
   const [empresaId, setEmpresaId] = React.useState(empresas[0]!.id);
   const [categoriaId, setCategoriaId] = React.useState<string>('__none__');
   const [valorMensal, setValorMensal] = React.useState<number>(0);
+  const [modoRateio, setModoRateio] = React.useState<ModoRateio>('manual');
   const [alocacoes, setAlocacoes] = React.useState<{ obra_id: string; percentual: number }[]>([]);
   const [pending, startTransition] = React.useTransition();
 
   const obrasEmpresa = obras.filter((o) => o.empresa_id === empresaId);
   const totalPct = alocacoes.reduce((s, a) => s + (a.percentual || 0), 0);
-  const ok = Math.abs(totalPct - 100) < 0.01;
+  const ok = modoRateio !== 'manual' || Math.abs(totalPct - 100) < 0.01;
 
   React.useEffect(() => {
     setAlocacoes([]);
@@ -57,7 +60,9 @@ export function NovoCustoFixoForm({ empresas, obras, categorias }: { empresas: E
     const fd = new FormData(e.currentTarget);
     fd.set('empresa_id', empresaId);
     if (categoriaId !== '__none__') fd.set('categoria_id', categoriaId);
-    fd.set('alocacoes_json', JSON.stringify(alocacoes));
+    fd.set('modo_rateio', modoRateio);
+    // Send alocações only in manual mode; other modes derive them dynamically.
+    fd.set('alocacoes_json', JSON.stringify(modoRateio === 'manual' ? alocacoes : []));
     startTransition(async () => {
       const res = await criarCustoFixo(fd);
       if (res.error) toast.error(res.error);
@@ -99,51 +104,73 @@ export function NovoCustoFixoForm({ empresas, obras, categorias }: { empresas: E
       </section>
 
       <section className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold uppercase tracking-widest text-brand-600">Endereçamento por obra</h3>
-          <div className="flex items-center gap-3">
-            <Button type="button" variant="outline" size="sm" onClick={dividirIgual}>Dividir igual</Button>
-            <span className={ok ? 'text-emerald-700 font-mono text-sm' : 'text-red-700 font-mono text-sm'}>
-              Soma: {totalPct.toFixed(2)}%
-            </span>
-          </div>
-        </div>
-        <p className="text-xs text-brand-500">
-          Endereçe explicitamente — sem rateio uniforme automático. Ex: contabilidade que só cai na obra em parceria.
-        </p>
-        {alocacoes.map((a, i) => (
-          <div key={i} className="grid grid-cols-12 items-end gap-2">
-            <div className="col-span-8">
-              <Field label={i === 0 ? 'Obra' : ''} name={`obra_${i}`}>
-                <Select value={a.obra_id} onValueChange={(v) => upd(i, { obra_id: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {obrasEmpresa.map((o) => (
-                      <SelectItem key={o.id} value={o.id}>{o.nome}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-            </div>
-            <div className="col-span-3">
-              <Field label={i === 0 ? '%' : ''} name={`pct_${i}`}>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={a.percentual || ''}
-                  onChange={(e) => upd(i, { percentual: Number(e.target.value) })}
-                />
-              </Field>
-            </div>
-            <Button type="button" variant="ghost" size="icon" className="col-span-1" onClick={() => del(i)}>
-              <Trash2 className="size-4 text-red-500" />
-            </Button>
-          </div>
-        ))}
-        <Button type="button" variant="outline" size="sm" onClick={addObra}>
-          <Plus className="size-4" /> Adicionar obra
-        </Button>
+        <Field label="Modo de rateio" name="modo_rateio">
+          <Select value={modoRateio} onValueChange={(v) => setModoRateio(v as ModoRateio)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="manual">Manual — eu defino os % por obra</SelectItem>
+              <SelectItem value="igual_obras_ativas">Igual entre obras ativas (auto)</SelectItem>
+              <SelectItem value="proporcional_faturamento">Proporcional ao faturamento do mês (auto)</SelectItem>
+            </SelectContent>
+          </Select>
+        </Field>
+        {modoRateio !== 'manual' ? (
+          <p className="rounded-md border border-brand-100 bg-brand-50/60 px-3 py-2 text-xs text-brand-700">
+            {modoRateio === 'igual_obras_ativas'
+              ? 'O sistema divide o valor igualmente entre as obras com status "ativa" no mês de competência. Não precisa endereçar manualmente.'
+              : 'O sistema divide proporcionalmente ao valor líquido das medições de cada obra no mês. Sem medições, cai pra rateio igual entre obras ativas.'}
+          </p>
+        ) : null}
       </section>
+
+      {modoRateio === 'manual' ? (
+        <section className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold uppercase tracking-widest text-brand-600">Endereçamento por obra</h3>
+            <div className="flex items-center gap-3">
+              <Button type="button" variant="outline" size="sm" onClick={dividirIgual}>Dividir igual</Button>
+              <span className={ok ? 'text-emerald-700 font-mono text-sm' : 'text-red-700 font-mono text-sm'}>
+                Soma: {totalPct.toFixed(2)}%
+              </span>
+            </div>
+          </div>
+          <p className="text-xs text-brand-500">
+            Endereçe explicitamente. Ex: contabilidade que só cai na obra em parceria.
+          </p>
+          {alocacoes.map((a, i) => (
+            <div key={i} className="grid grid-cols-12 items-end gap-2">
+              <div className="col-span-8">
+                <Field label={i === 0 ? 'Obra' : ''} name={`obra_${i}`}>
+                  <Select value={a.obra_id} onValueChange={(v) => upd(i, { obra_id: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {obrasEmpresa.map((o) => (
+                        <SelectItem key={o.id} value={o.id}>{o.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </div>
+              <div className="col-span-3">
+                <Field label={i === 0 ? '%' : ''} name={`pct_${i}`}>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={a.percentual || ''}
+                    onChange={(e) => upd(i, { percentual: Number(e.target.value) })}
+                  />
+                </Field>
+              </div>
+              <Button type="button" variant="ghost" size="icon" className="col-span-1" onClick={() => del(i)}>
+                <Trash2 className="size-4 text-red-500" />
+              </Button>
+            </div>
+          ))}
+          <Button type="button" variant="outline" size="sm" onClick={addObra}>
+            <Plus className="size-4" /> Adicionar obra
+          </Button>
+        </section>
+      ) : null}
 
       <TextareaField label="Observações" name="observacoes" rows={2} />
 

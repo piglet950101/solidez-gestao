@@ -12,6 +12,7 @@ const Schema = z.object({
   dia_vencimento: z.preprocess(emptyToNull, z.coerce.number().int().min(1).max(31).nullable().optional()),
   vigencia_inicio: z.preprocess(emptyToNull, z.coerce.date().nullable().optional()),
   observacoes: optionalString,
+  modo_rateio: z.enum(['manual', 'igual_obras_ativas', 'proporcional_faturamento']).default('manual'),
   alocacoes_json: z.string(),
 });
 
@@ -22,19 +23,23 @@ const AlocacoesSchema = z.array(
 export async function criarCustoFixo(formData: FormData) {
   const parsed = Schema.safeParse(Object.fromEntries(formData.entries()));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Dados inválidos.' };
+  const { alocacoes_json, modo_rateio, ...rest } = parsed.data;
 
-  let alocs: { obra_id: string; percentual: number }[];
-  try {
-    alocs = AlocacoesSchema.parse(JSON.parse(parsed.data.alocacoes_json));
-  } catch {
-    return { error: 'Estrutura de alocações inválida.' };
+  // Manual mode requires explicit alocações summing to 100%.
+  // Other modes derive alocações dynamically (per-month) and ignore the JSON.
+  let alocs: { obra_id: string; percentual: number }[] = [];
+  if (modo_rateio === 'manual') {
+    try {
+      alocs = AlocacoesSchema.parse(JSON.parse(alocacoes_json));
+    } catch {
+      return { error: 'Estrutura de alocações inválida.' };
+    }
+    if (alocs.length === 0) return { error: 'Endereçe o custo fixo a pelo menos uma obra.' };
+    const total = alocs.reduce((s, a) => s + a.percentual, 0);
+    if (Math.abs(total - 100) > 0.01) return { error: `Soma dos percentuais (${total.toFixed(2)}%) deve ser exatamente 100%.` };
   }
-  if (alocs.length === 0) return { error: 'Endereçe o custo fixo a pelo menos uma obra.' };
-  const total = alocs.reduce((s, a) => s + a.percentual, 0);
-  if (Math.abs(total - 100) > 0.01) return { error: `Soma dos percentuais (${total.toFixed(2)}%) deve ser exatamente 100%.` };
 
   const supabase = await createClient();
-  const { alocacoes_json, ...rest } = parsed.data;
   const { data, error } = await supabase
     .from('custos_fixos')
     .insert({
@@ -45,14 +50,17 @@ export async function criarCustoFixo(formData: FormData) {
       dia_vencimento: rest.dia_vencimento ?? null,
       vigencia_inicio: rest.vigencia_inicio?.toISOString().slice(0, 10) ?? new Date().toISOString().slice(0, 10),
       observacoes: rest.observacoes ?? null,
-    })
+      modo_rateio,
+    } as never)
     .select('id')
     .single();
   if (error) return { error: error.message };
 
-  const rows = alocs.map((a) => ({ custo_fixo_id: data.id, ...a }));
-  const { error: e2 } = await supabase.from('custos_fixos_alocacoes').insert(rows);
-  if (e2) return { error: e2.message };
+  if (modo_rateio === 'manual' && alocs.length > 0) {
+    const rows = alocs.map((a) => ({ custo_fixo_id: data.id, ...a }));
+    const { error: e2 } = await supabase.from('custos_fixos_alocacoes').insert(rows);
+    if (e2) return { error: e2.message };
+  }
 
   revalidatePath('/custos-fixos');
   return { id: data.id };

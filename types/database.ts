@@ -278,9 +278,10 @@ export type Database = {
           vigencia_fim: string | null;
           ativo: boolean;
           observacoes: string | null;
+          modo_rateio: 'manual' | 'igual_obras_ativas' | 'proporcional_faturamento';
           criado_em: string;
         };
-        Insert: { id?: string; empresa_id: string; descricao: string; categoria_id?: string | null; valor_mensal: number; dia_vencimento?: number | null; vigencia_inicio?: string; vigencia_fim?: string | null; ativo?: boolean; observacoes?: string | null };
+        Insert: { id?: string; empresa_id: string; descricao: string; categoria_id?: string | null; valor_mensal: number; dia_vencimento?: number | null; vigencia_inicio?: string; vigencia_fim?: string | null; ativo?: boolean; observacoes?: string | null; modo_rateio?: 'manual' | 'igual_obras_ativas' | 'proporcional_faturamento' };
         Update: Partial<Database['public']['Tables']['custos_fixos']['Insert']>;
         Relationships: [];
       };

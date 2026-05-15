@@ -56,6 +56,7 @@ export default async function CustosFixosPage() {
                   const empresa = (c as unknown as { empresas: { nome: string } }).empresas;
                   const cat = (c as unknown as { categorias?: { nome: string } }).categorias;
                   const aloc = (c as unknown as { custos_fixos_alocacoes: { percentual: number; obras: { nome: string } }[] }).custos_fixos_alocacoes;
+                  const modo = (c as unknown as { modo_rateio?: string }).modo_rateio ?? 'manual';
                   return (
                     <TR key={c.id}>
                       <TD className="font-medium">{c.descricao}</TD>
@@ -64,9 +65,15 @@ export default async function CustosFixosPage() {
                       <TD className="text-right font-mono font-bold">{formatBRL(c.valor_mensal)}</TD>
                       <TD className="text-center font-mono">{c.dia_vencimento ?? '—'}</TD>
                       <TD className="text-xs">
-                        {aloc?.length
-                          ? aloc.map((a) => `${a.obras?.nome} (${a.percentual}%)`).join(' · ')
-                          : <Badge tone="amber">não endereçado</Badge>}
+                        {modo === 'manual' ? (
+                          aloc?.length
+                            ? aloc.map((a) => `${a.obras?.nome} (${a.percentual}%)`).join(' · ')
+                            : <Badge tone="amber">não endereçado</Badge>
+                        ) : modo === 'igual_obras_ativas' ? (
+                          <Badge tone="brand">igual entre obras ativas</Badge>
+                        ) : (
+                          <Badge tone="brand">proporcional ao faturamento</Badge>
+                        )}
                       </TD>
                     </TR>
                   );
