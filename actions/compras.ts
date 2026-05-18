@@ -187,6 +187,114 @@ export async function atualizarCompraBasico(
   return {};
 }
 
+/**
+ * Sugere alocações automáticas pra uma compra, segundo o modo escolhido:
+ * - 'igual_obras_ativas': divide igualmente entre obras ativas da empresa
+ * - 'proporcional_funcionarios': divide proporcionalmente ao nº de funcionários
+ *   ativos vinculados a cada obra (obra_atual_id)
+ * - 'proporcional_faturamento': divide proporcionalmente ao valor_liquido das
+ *   medições do mês em cada obra (fallback: igual entre obras ativas)
+ */
+export async function sugerirRateioAuto(
+  empresa_id: string,
+  modo: 'igual_obras_ativas' | 'proporcional_funcionarios' | 'proporcional_faturamento',
+  data_compra?: string,
+): Promise<{ alocacoes?: { obra_id: string; percentual: number }[]; error?: string }> {
+  const supabase = await createClient();
+  const { data: obras } = await supabase
+    .from('obras')
+    .select('id, nome')
+    .eq('empresa_id', empresa_id)
+    .eq('status', 'ativa');
+  if (!obras || obras.length === 0) {
+    return { error: 'Sem obras ativas nesta empresa.' };
+  }
+
+  if (modo === 'igual_obras_ativas') {
+    const n = obras.length;
+    const pct = 100 / n;
+    return {
+      alocacoes: obras.map((o, i) => ({
+        obra_id: o.id,
+        // Joga o resíduo de arredondamento na primeira obra pra somar 100% exato
+        percentual: i === 0 ? Number((pct + (100 - pct * n)).toFixed(4)) : Number(pct.toFixed(4)),
+      })),
+    };
+  }
+
+  if (modo === 'proporcional_funcionarios') {
+    const obraIds = obras.map((o) => o.id);
+    const { data: funcs } = await supabase
+      .from('funcionarios')
+      .select('id, obra_atual_id, status')
+      .neq('status', 'desligado')
+      .in('obra_atual_id', obraIds);
+    const counts = new Map<string, number>();
+    for (const f of funcs ?? []) {
+      if (f.obra_atual_id) counts.set(f.obra_atual_id, (counts.get(f.obra_atual_id) ?? 0) + 1);
+    }
+    const total = Array.from(counts.values()).reduce((s, n) => s + n, 0);
+    if (total === 0) {
+      return { error: 'Nenhum funcionário ativo vinculado a obras desta empresa — vincule funcionários antes ou use outro modo.' };
+    }
+    const obrasComFunc = obras.filter((o) => (counts.get(o.id) ?? 0) > 0);
+    return {
+      alocacoes: obrasComFunc.map((o, i) => {
+        const pct = ((counts.get(o.id) ?? 0) * 100) / total;
+        const last = i === obrasComFunc.length - 1;
+        // Joga o resíduo na última obra pra somar 100% exato (sem perder centavos)
+        if (last) {
+          const usados = obrasComFunc
+            .slice(0, i)
+            .reduce((s, oo) => s + Number((((counts.get(oo.id) ?? 0) * 100) / total).toFixed(4)), 0);
+          return { obra_id: o.id, percentual: Number((100 - usados).toFixed(4)) };
+        }
+        return { obra_id: o.id, percentual: Number(pct.toFixed(4)) };
+      }),
+    };
+  }
+
+  // proporcional_faturamento
+  const d = data_compra ? new Date(data_compra) : new Date();
+  const monthStart = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
+  const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10);
+  const obraIds = obras.map((o) => o.id);
+  const { data: medicoes } = await supabase
+    .from('medicoes')
+    .select('obra_id, valor_liquido')
+    .in('obra_id', obraIds)
+    .gte('data_emissao', monthStart)
+    .lte('data_emissao', monthEnd);
+  const faturamento = new Map<string, number>();
+  for (const m of medicoes ?? []) faturamento.set(m.obra_id, (faturamento.get(m.obra_id) ?? 0) + Number(m.valor_liquido));
+  const total = Array.from(faturamento.values()).reduce((s, n) => s + n, 0);
+  if (total === 0) {
+    // Fallback: rateio igual
+    const n = obras.length;
+    const pct = 100 / n;
+    return {
+      alocacoes: obras.map((o, i) => ({
+        obra_id: o.id,
+        percentual: i === 0 ? Number((pct + (100 - pct * n)).toFixed(4)) : Number(pct.toFixed(4)),
+      })),
+    };
+  }
+  const obrasComFat = obras.filter((o) => (faturamento.get(o.id) ?? 0) > 0);
+  return {
+    alocacoes: obrasComFat.map((o, i) => {
+      const last = i === obrasComFat.length - 1;
+      if (last) {
+        const usados = obrasComFat
+          .slice(0, i)
+          .reduce((s, oo) => s + Number((((faturamento.get(oo.id) ?? 0) * 100) / total).toFixed(4)), 0);
+        return { obra_id: o.id, percentual: Number((100 - usados).toFixed(4)) };
+      }
+      const pct = ((faturamento.get(o.id) ?? 0) * 100) / total;
+      return { obra_id: o.id, percentual: Number(pct.toFixed(4)) };
+    }),
+  };
+}
+
 export async function excluirCompra(id: string) {
   const supabase = await createClient();
   const { error } = await supabase.from('compras').delete().eq('id', id);

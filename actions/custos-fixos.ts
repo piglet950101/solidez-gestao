@@ -12,7 +12,7 @@ const Schema = z.object({
   dia_vencimento: z.preprocess(emptyToNull, z.coerce.number().int().min(1).max(31).nullable().optional()),
   vigencia_inicio: z.preprocess(emptyToNull, z.coerce.date().nullable().optional()),
   observacoes: optionalString,
-  modo_rateio: z.enum(['manual', 'igual_obras_ativas', 'proporcional_faturamento']).default('manual'),
+  modo_rateio: z.enum(['manual', 'igual_obras_ativas', 'proporcional_faturamento', 'proporcional_funcionarios']).default('manual'),
   alocacoes_json: z.string(),
 });
 

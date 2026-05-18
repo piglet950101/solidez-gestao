@@ -13,7 +13,7 @@ interface Empresa { id: string; nome: string }
 interface Obra { id: string; nome: string; empresa_id: string }
 interface Categoria { id: string; nome: string }
 
-type ModoRateio = 'manual' | 'igual_obras_ativas' | 'proporcional_faturamento';
+type ModoRateio = 'manual' | 'igual_obras_ativas' | 'proporcional_faturamento' | 'proporcional_funcionarios';
 
 export function NovoCustoFixoForm({ empresas, obras, categorias }: { empresas: Empresa[]; obras: Obra[]; categorias: Categoria[] }) {
   const router = useRouter();
@@ -110,6 +110,7 @@ export function NovoCustoFixoForm({ empresas, obras, categorias }: { empresas: E
             <SelectContent>
               <SelectItem value="manual">Manual — eu defino os % por obra</SelectItem>
               <SelectItem value="igual_obras_ativas">Igual entre obras ativas (auto)</SelectItem>
+              <SelectItem value="proporcional_funcionarios">Proporcional ao nº de funcionários por obra (auto)</SelectItem>
               <SelectItem value="proporcional_faturamento">Proporcional ao faturamento do mês (auto)</SelectItem>
             </SelectContent>
           </Select>
@@ -118,7 +119,9 @@ export function NovoCustoFixoForm({ empresas, obras, categorias }: { empresas: E
           <p className="rounded-md border border-brand-100 bg-brand-50/60 px-3 py-2 text-xs text-brand-700">
             {modoRateio === 'igual_obras_ativas'
               ? 'O sistema divide o valor igualmente entre as obras com status "ativa" no mês de competência. Não precisa endereçar manualmente.'
-              : 'O sistema divide proporcionalmente ao valor líquido das medições de cada obra no mês. Sem medições, cai pra rateio igual entre obras ativas.'}
+              : modoRateio === 'proporcional_funcionarios'
+                ? 'O sistema conta os funcionários ativos vinculados a cada obra (obra atual) e divide proporcionalmente. Útil pra sindicato, EPI, uniforme, medicina do trabalho. Sem funcionários vinculados, cai pra rateio igual entre obras ativas.'
+                : 'O sistema divide proporcionalmente ao valor líquido das medições de cada obra no mês. Sem medições, cai pra rateio igual entre obras ativas.'}
           </p>
         ) : null}
       </section>

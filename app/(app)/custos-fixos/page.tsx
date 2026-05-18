@@ -71,6 +71,8 @@ export default async function CustosFixosPage() {
                             : <Badge tone="amber">não endereçado</Badge>
                         ) : modo === 'igual_obras_ativas' ? (
                           <Badge tone="brand">igual entre obras ativas</Badge>
+                        ) : modo === 'proporcional_funcionarios' ? (
+                          <Badge tone="brand">proporcional ao nº de funcionários</Badge>
                         ) : (
                           <Badge tone="brand">proporcional ao faturamento</Badge>
                         )}

@@ -280,10 +280,10 @@ export type Database = {
           vigencia_fim: string | null;
           ativo: boolean;
           observacoes: string | null;
-          modo_rateio: 'manual' | 'igual_obras_ativas' | 'proporcional_faturamento';
+          modo_rateio: 'manual' | 'igual_obras_ativas' | 'proporcional_faturamento' | 'proporcional_funcionarios';
           criado_em: string;
         };
-        Insert: { id?: string; empresa_id: string; descricao: string; categoria_id?: string | null; valor_mensal: number; dia_vencimento?: number | null; vigencia_inicio?: string; vigencia_fim?: string | null; ativo?: boolean; observacoes?: string | null; modo_rateio?: 'manual' | 'igual_obras_ativas' | 'proporcional_faturamento' };
+        Insert: { id?: string; empresa_id: string; descricao: string; categoria_id?: string | null; valor_mensal: number; dia_vencimento?: number | null; vigencia_inicio?: string; vigencia_fim?: string | null; ativo?: boolean; observacoes?: string | null; modo_rateio?: 'manual' | 'igual_obras_ativas' | 'proporcional_faturamento' | 'proporcional_funcionarios' };
         Update: Partial<Database['public']['Tables']['custos_fixos']['Insert']>;
         Relationships: [];
       };

@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RateioForm } from '@/components/compras/rateio-form';
 import { ParcelasEditor } from '@/components/compras/parcelas-editor';
 import { FornecedorQuickAddDialog } from '@/components/fornecedores/quick-add-dialog';
-import { criarCompra } from '@/actions/compras';
+import { criarCompra, sugerirRateioAuto } from '@/actions/compras';
 import { gerarParcelas, type RateioInputObra, type RateioModo } from '@/lib/rateio';
 import { FORMATOS_PAGAMENTO } from '@/lib/formato-pagamento';
 import { isSubtipoVeiculo } from '@/lib/categoria-subtipos';
@@ -534,8 +534,60 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
         ) : null}
       </div>
 
-      <div className="space-y-2">
-        <h3 className="text-sm font-semibold uppercase tracking-widest text-brand-600">Rateio entre obras</h3>
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold uppercase tracking-widest text-brand-600">Rateio entre obras</h3>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-brand-500">Preencher automático:</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                const res = await sugerirRateioAuto(empresaId, 'igual_obras_ativas', undefined);
+                if (res.error) return toast.error(res.error);
+                setModoRateio('percentual');
+                setAlocacoes((res.alocacoes ?? []).map((a) => ({ obra_id: a.obra_id, percentual: a.percentual })));
+                toast.success('Rateio dividido igualmente entre obras ativas.');
+              }}
+            >
+              Igual
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                const res = await sugerirRateioAuto(empresaId, 'proporcional_funcionarios', undefined);
+                if (res.error) return toast.error(res.error);
+                setModoRateio('percentual');
+                setAlocacoes((res.alocacoes ?? []).map((a) => ({ obra_id: a.obra_id, percentual: a.percentual })));
+                toast.success('Rateio proporcional ao nº de funcionários por obra.');
+              }}
+            >
+              Por funcionários
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                const dataCompra = (document.querySelector('input[name="data_compra"]') as HTMLInputElement | null)?.value;
+                const res = await sugerirRateioAuto(empresaId, 'proporcional_faturamento', dataCompra);
+                if (res.error) return toast.error(res.error);
+                setModoRateio('percentual');
+                setAlocacoes((res.alocacoes ?? []).map((a) => ({ obra_id: a.obra_id, percentual: a.percentual })));
+                toast.success('Rateio proporcional ao faturamento do mês.');
+              }}
+            >
+              Por faturamento
+            </Button>
+          </div>
+        </div>
+        <p className="text-xs text-brand-500">
+          Use os botões acima pra preencher o rateio automaticamente quando o custo é indireto
+          (sindicato, EPI, uniforme, medicina do trabalho, administrativo). Você ainda pode ajustar os percentuais manualmente depois.
+        </p>
         <RateioForm
           obras={obrasDaEmpresa}
           valorTotal={valorTotal}
