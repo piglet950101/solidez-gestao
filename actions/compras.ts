@@ -35,6 +35,7 @@ const CompraItensSchema = z.array(
     item_id: z.string().uuid(),
     quantidade: z.coerce.number().positive(),
     valor_unitario: z.coerce.number().nonnegative(),
+    observacao: optionalString,
   }),
 );
 
@@ -77,7 +78,7 @@ export async function criarCompra(formData: FormData): Promise<{ id?: string; er
 
   // Optional: detalhamento por linhas de item. Quando vier, soma deve bater
   // com o valor_total da compra (tolerância R$ 0,05).
-  let itensInput: { item_id: string; quantidade: number; valor_unitario: number }[] = [];
+  let itensInput: { item_id: string; quantidade: number; valor_unitario: number; observacao?: string | null }[] = [];
   if (parsed.data.itens_json && parsed.data.itens_json !== '[]') {
     try {
       itensInput = CompraItensSchema.parse(JSON.parse(parsed.data.itens_json));
@@ -145,6 +146,7 @@ export async function criarCompra(formData: FormData): Promise<{ id?: string; er
       item_id: i.item_id,
       quantidade: i.quantidade,
       valor_unitario: i.valor_unitario,
+      observacao: i.observacao ?? null,
     }));
     const { error: itensErr } = await supabase.from('compra_itens').insert(rows);
     if (itensErr) {

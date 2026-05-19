@@ -555,6 +555,93 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['compra_itens']['Insert']>;
         Relationships: [];
       };
+      epi_entregas: {
+        Row: {
+          id: string;
+          funcionario_id: string;
+          obra_id: string;
+          data_entrega: string;
+          responsavel_id: string | null;
+          assinado_em: string | null;
+          assinatura_url: string | null;
+          observacao: string | null;
+          criado_em: string;
+        };
+        Insert: {
+          id?: string;
+          funcionario_id: string;
+          obra_id: string;
+          data_entrega?: string;
+          observacao?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['epi_entregas']['Insert']>;
+        Relationships: [];
+      };
+      epi_entrega_itens: {
+        Row: {
+          id: string;
+          entrega_id: string;
+          item_id: string;
+          quantidade: number;
+          numero_ca: string | null;
+          validade: string | null;
+          lote: string | null;
+          motivo: string | null;
+        };
+        Insert: {
+          id?: string;
+          entrega_id: string;
+          item_id: string;
+          quantidade: number;
+          numero_ca?: string | null;
+          validade?: string | null;
+          lote?: string | null;
+          motivo?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['epi_entrega_itens']['Insert']>;
+        Relationships: [];
+      };
+      requisicoes: {
+        Row: {
+          id: string;
+          obra_id: string;
+          solicitante_id: string | null;
+          status: 'aberta' | 'parcialmente_atendida' | 'atendida' | 'cancelada';
+          observacao: string | null;
+          data_solicitacao: string;
+          data_atendimento: string | null;
+          atendida_por: string | null;
+          criado_em: string;
+        };
+        Insert: {
+          id?: string;
+          obra_id: string;
+          observacao?: string | null;
+          status?: 'aberta' | 'parcialmente_atendida' | 'atendida' | 'cancelada';
+        };
+        Update: Partial<Database['public']['Tables']['requisicoes']['Insert']>;
+        Relationships: [];
+      };
+      requisicao_itens: {
+        Row: {
+          id: string;
+          requisicao_id: string;
+          item_id: string;
+          quantidade_pedida: number;
+          quantidade_atendida: number;
+          observacao: string | null;
+        };
+        Insert: {
+          id?: string;
+          requisicao_id: string;
+          item_id: string;
+          quantidade_pedida: number;
+          quantidade_atendida?: number;
+          observacao?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['requisicao_itens']['Insert']>;
+        Relationships: [];
+      };
       lancamentos_folha: {
         Row: {
           id: string;
@@ -884,6 +971,14 @@ export type Database = {
       fn_custo_fixo_alocacoes_efetivas: {
         Args: { p_custo_fixo_id: string; p_mes_referencia?: string };
         Returns: { obra_id: string; percentual: number; valor: number }[];
+      };
+      fn_atender_requisicao: {
+        Args: { p_requisicao_id: string; p_itens: Json };
+        Returns: undefined;
+      };
+      fn_registrar_entrega_epi: {
+        Args: { p_funcionario_id: string; p_obra_id: string; p_data_entrega: string; p_observacao: string | null; p_itens: Json };
+        Returns: string;
       };
     };
     Enums: {

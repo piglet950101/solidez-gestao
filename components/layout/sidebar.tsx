@@ -18,6 +18,8 @@ import {
   Coins,
   Building,
   Boxes,
+  ClipboardList,
+  Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -28,11 +30,13 @@ const NAV: { href: string; label: string; icon: React.ComponentType<{ className?
   { href: '/compras', label: 'Compras', icon: ShoppingCart, group: 'financeiro' },
   { href: '/fornecedores', label: 'Fornecedores', icon: Building, group: 'financeiro' },
   { href: '/itens', label: 'Itens / Estoque', icon: Boxes, group: 'financeiro' },
+  { href: '/requisicoes', label: 'Requisições', icon: ClipboardList, group: 'financeiro' },
   { href: '/custos-fixos', label: 'Custos Fixos', icon: Wallet, group: 'financeiro' },
   { href: '/medicoes', label: 'Medições', icon: FileBarChart, group: 'financeiro' },
   { href: '/impostos', label: 'Impostos', icon: Receipt, group: 'financeiro' },
 
   { href: '/funcionarios', label: 'Funcionários', icon: Users, group: 'pessoas' },
+  { href: '/epi/entregar', label: 'Entrega de EPI', icon: Shield, group: 'pessoas' },
   { href: '/folha', label: 'Folha', icon: Banknote, group: 'pessoas' },
   { href: '/vales', label: 'Vales', icon: PiggyBank, group: 'pessoas' },
   { href: '/empreitadas', label: 'Empreitadas', icon: Hammer, group: 'pessoas' },

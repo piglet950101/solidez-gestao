@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RateioForm } from '@/components/compras/rateio-form';
 import { ParcelasEditor } from '@/components/compras/parcelas-editor';
 import { FornecedorQuickAddDialog } from '@/components/fornecedores/quick-add-dialog';
+import { ItemQuickAddDialog } from '@/components/itens/quick-add-dialog';
 import { criarCompra, sugerirRateioAuto } from '@/actions/compras';
 import { gerarParcelas, type RateioInputObra, type RateioModo } from '@/lib/rateio';
 import { FORMATOS_PAGAMENTO } from '@/lib/formato-pagamento';
@@ -58,7 +59,7 @@ interface ItemOption {
 }
 
 type FaseFuncionario = 'admissional' | 'recorrente' | 'demissional';
-type CompraItemLine = { item_id: string; quantidade: number; valor_unitario: number };
+type CompraItemLine = { item_id: string; quantidade: number; valor_unitario: number; observacao?: string };
 
 interface NovaCompraFormProps {
   empresas: Option[];
@@ -89,6 +90,8 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
   const [funcionarioId, setFuncionarioId] = React.useState<string>('');
   const [faseFuncionario, setFaseFuncionario] = React.useState<FaseFuncionario>('recorrente');
   const [linhasItens, setLinhasItens] = React.useState<CompraItemLine[]>([]);
+  // Local copy of itens so a quick-add dialog can append without page reload.
+  const [itensList, setItensList] = React.useState<ItemOption[]>(itens);
   // Local list of fornecedores so a quick-add can append without page reload
   const [fornecedoresList, setFornecedoresList] = React.useState(fornecedores);
   const [fornecedorId, setFornecedorId] = React.useState<string>('');
@@ -458,64 +461,86 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
           Se preferir uma compra sem detalhamento (ex.: serviço), deixe em branco.
         </p>
         {linhasItens.map((linha, idx) => {
-          const itemSel = itens.find((i) => i.id === linha.item_id);
+          const itemSel = itensList.find((i) => i.id === linha.item_id);
           return (
-            <div key={idx} className="grid grid-cols-12 items-end gap-2">
-              <div className="col-span-5">
-                <Label className="text-xs">{idx === 0 ? 'Item' : ''}</Label>
-                <Select
-                  value={linha.item_id || '__none__'}
-                  onValueChange={(v) => {
-                    const novo = v === '__none__' ? '' : v;
-                    const it = itens.find((i) => i.id === novo);
-                    setLinhasItens(linhasItens.map((l, i) => i === idx ? { ...l, item_id: novo, valor_unitario: l.valor_unitario || (it?.valor_medio ?? 0) } : l));
-                  }}
+            <div key={idx} className="space-y-1 rounded-md border border-brand-100 bg-white p-2">
+              <div className="grid grid-cols-12 items-end gap-2">
+                <div className="col-span-5">
+                  <Label className="text-xs">{idx === 0 ? 'Item' : ''}</Label>
+                  <div className="flex items-stretch gap-2">
+                    <div className="min-w-0 flex-1">
+                      <Select
+                        value={linha.item_id || '__none__'}
+                        onValueChange={(v) => {
+                          const novo = v === '__none__' ? '' : v;
+                          const it = itensList.find((i) => i.id === novo);
+                          setLinhasItens(linhasItens.map((l, i) => i === idx ? { ...l, item_id: novo, valor_unitario: l.valor_unitario || (it?.valor_medio ?? 0) } : l));
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">— selecione —</SelectItem>
+                          {itensList.map((it) => (
+                            <SelectItem key={it.id} value={it.id}>
+                              {it.nome} ({it.unidade})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <ItemQuickAddDialog
+                      onCreated={(novo) => {
+                        setItensList((prev) => [...prev, { ...novo, valor_medio: null }].sort((a, b) => a.nome.localeCompare(b.nome)));
+                        setLinhasItens(linhasItens.map((l, i) => i === idx ? { ...l, item_id: novo.id } : l));
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="col-span-3">
+                  <Label className="text-xs">{idx === 0 ? `Qtd${itemSel ? ` (${itemSel.unidade})` : ''}` : ''}</Label>
+                  <input
+                    type="number"
+                    step="0.001"
+                    min="0"
+                    value={linha.quantidade || ''}
+                    onChange={(e) => setLinhasItens(linhasItens.map((l, i) => i === idx ? { ...l, quantidade: Number(e.target.value) } : l))}
+                    className="block w-full rounded-md border border-brand-200 bg-white px-3 py-2 font-mono text-sm"
+                  />
+                </div>
+                <div className="col-span-3">
+                  <Label className="text-xs">{idx === 0 ? 'Valor unitário (R$)' : ''}</Label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={linha.valor_unitario || ''}
+                    onChange={(e) => setLinhasItens(linhasItens.map((l, i) => i === idx ? { ...l, valor_unitario: Number(e.target.value) } : l))}
+                    className="block w-full rounded-md border border-brand-200 bg-white px-3 py-2 font-mono text-sm"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="col-span-1"
+                  onClick={() => setLinhasItens(linhasItens.filter((_, i) => i !== idx))}
+                  aria-label="Remover linha"
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">— selecione —</SelectItem>
-                    {itens.map((it) => (
-                      <SelectItem key={it.id} value={it.id}>
-                        {it.nome} ({it.unidade})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  ✕
+                </Button>
               </div>
-              <div className="col-span-3">
-                <Label className="text-xs">{idx === 0 ? `Qtd${itemSel ? ` (${itemSel.unidade})` : ''}` : ''}</Label>
+              <div>
+                <Label className="text-xs text-brand-500">Como veio na NF (opcional)</Label>
                 <input
-                  type="number"
-                  step="0.001"
-                  min="0"
-                  value={linha.quantidade || ''}
-                  onChange={(e) => setLinhasItens(linhasItens.map((l, i) => i === idx ? { ...l, quantidade: Number(e.target.value) } : l))}
-                  className="block w-full rounded-md border border-brand-200 bg-white px-3 py-2 font-mono text-sm"
+                  type="text"
+                  value={linha.observacao ?? ''}
+                  onChange={(e) => setLinhasItens(linhasItens.map((l, i) => i === idx ? { ...l, observacao: e.target.value } : l))}
+                  placeholder='Ex.: "DISCO CORTE INOX TYROLIT 4.1/2" — preserva a descrição exata do fornecedor pra rastreabilidade'
+                  className="block w-full rounded-md border border-brand-100 bg-brand-50/40 px-3 py-1.5 text-xs"
                 />
               </div>
-              <div className="col-span-3">
-                <Label className="text-xs">{idx === 0 ? 'Valor unitário (R$)' : ''}</Label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={linha.valor_unitario || ''}
-                  onChange={(e) => setLinhasItens(linhasItens.map((l, i) => i === idx ? { ...l, valor_unitario: Number(e.target.value) } : l))}
-                  className="block w-full rounded-md border border-brand-200 bg-white px-3 py-2 font-mono text-sm"
-                />
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="col-span-1"
-                onClick={() => setLinhasItens(linhasItens.filter((_, i) => i !== idx))}
-                aria-label="Remover linha"
-              >
-                ✕
-              </Button>
             </div>
           );
         })}
@@ -525,11 +550,11 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
           size="sm"
           onClick={() => setLinhasItens([...linhasItens, { item_id: '', quantidade: 1, valor_unitario: 0 }])}
         >
-          + Adicionar item
+          + Adicionar linha
         </Button>
-        {itens.length === 0 ? (
+        {itensList.length === 0 ? (
           <p className="text-xs text-amber-700">
-            Nenhum item cadastrado ainda. Cadastre itens em <Link href="/itens/novo" className="underline">/itens/novo</Link> antes de detalhar a NF.
+            Nenhum item cadastrado ainda. Use o botão "+" ao lado do Select pra cadastrar rápido, ou cadastre completos em <Link href="/itens/novo" className="underline">/itens/novo</Link>.
           </p>
         ) : null}
       </div>

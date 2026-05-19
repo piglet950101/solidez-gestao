@@ -9,6 +9,7 @@ import { FuncionarioForm } from '../form';
 import { DesligarFuncionarioDialog } from '@/components/funcionarios/desligar-dialog';
 import { VinculoObraCard } from './vinculo-obra';
 import { DocumentosFuncionario } from './documentos';
+import { EpiHistoricoFuncionario } from './epi';
 import { formatDate } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
@@ -20,7 +21,7 @@ export default async function EditarFuncionarioPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
-  const [{ data: funcionario }, { data: obras }, { data: historicoRaw }, { data: documentos }] = await Promise.all([
+  const [{ data: funcionario }, { data: obras }, { data: historicoRaw }, { data: documentos }, { data: entregasEpi }] = await Promise.all([
     supabase.from('funcionarios').select('*').eq('id', id).maybeSingle(),
     supabase.from('obras').select('id, nome, status').order('nome'),
     supabase
@@ -33,6 +34,11 @@ export default async function EditarFuncionarioPage({
       .select('id, tipo, descricao, storage_path, validade, criado_em')
       .eq('funcionario_id', id)
       .order('criado_em', { ascending: false }),
+    supabase
+      .from('epi_entregas')
+      .select('id, data_entrega, obra_id, observacao, obras(nome), epi_entrega_itens(id, item_id, quantidade, numero_ca, validade, lote, motivo, itens(nome, unidade, valor_medio))')
+      .eq('funcionario_id', id)
+      .order('data_entrega', { ascending: false }),
   ]);
   if (!funcionario) notFound();
 
@@ -94,6 +100,12 @@ export default async function EditarFuncionarioPage({
       <DocumentosFuncionario
         funcionarioId={funcionario.id}
         documentos={(documentos ?? []) as { id: string; tipo: string; descricao: string | null; storage_path: string; validade: string | null; criado_em: string }[]}
+      />
+
+      <EpiHistoricoFuncionario
+        funcionarioId={funcionario.id}
+        entregas={(entregasEpi ?? []) as never}
+        status={funcionario.status}
       />
 
       <Card>
