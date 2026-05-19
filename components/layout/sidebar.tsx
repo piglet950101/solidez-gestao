@@ -20,6 +20,7 @@ import {
   Boxes,
   ClipboardList,
   Shield,
+  UserCog,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -46,6 +47,8 @@ const NAV: { href: string; label: string; icon: React.ComponentType<{ className?
 
   { href: '/alertas', label: 'Alertas', icon: Bell, group: 'monitoramento' },
   { href: '/capturar', label: 'Capturar', icon: Camera, group: 'monitoramento' },
+
+  { href: '/usuarios', label: 'Usuários', icon: UserCog, group: 'config' },
 ];
 
 const GROUP_LABELS: Record<string, string> = {
@@ -53,6 +56,7 @@ const GROUP_LABELS: Record<string, string> = {
   financeiro: 'Financeiro',
   pessoas: 'Pessoas',
   frota: 'Frota',
+  config: 'Configuração',
   monitoramento: 'Monitoramento',
 };
 
