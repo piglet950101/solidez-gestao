@@ -982,6 +982,10 @@ export type Database = {
         Args: { p_funcionario_id: string; p_obra_id: string; p_data_entrega: string; p_observacao: string | null; p_itens: Json };
         Returns: string;
       };
+      fn_dar_saida_estoque: {
+        Args: { p_item_id: string; p_quantidade: number; p_tipo: string; p_obra_id: string; p_origem_tipo: string; p_origem_id: string | null; p_observacao?: string | null };
+        Returns: string;
+      };
     };
     Enums: {
       obra_status: ObraStatus;

@@ -21,6 +21,7 @@ import {
   ClipboardList,
   Shield,
   UserCog,
+  ArrowDownToLine,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -32,6 +33,7 @@ const NAV: { href: string; label: string; icon: React.ComponentType<{ className?
   { href: '/fornecedores', label: 'Fornecedores', icon: Building, group: 'financeiro' },
   { href: '/itens', label: 'Itens / Estoque', icon: Boxes, group: 'financeiro' },
   { href: '/requisicoes', label: 'Requisições', icon: ClipboardList, group: 'financeiro' },
+  { href: '/estoque/saida', label: 'Saída de estoque', icon: ArrowDownToLine, group: 'financeiro' },
   { href: '/custos-fixos', label: 'Custos Fixos', icon: Wallet, group: 'financeiro' },
   { href: '/medicoes', label: 'Medições', icon: FileBarChart, group: 'financeiro' },
   { href: '/impostos', label: 'Impostos', icon: Receipt, group: 'financeiro' },
