@@ -10,15 +10,17 @@ import { createClient } from '@/lib/supabase/client';
 
 interface Props {
   funcionario?: Funcionario;
+  obras?: { id: string; nome: string }[];
 }
 
-export function FuncionarioForm({ funcionario }: Props) {
+export function FuncionarioForm({ funcionario, obras = [] }: Props) {
   const router = useRouter();
   const supabase = React.useMemo(() => createClient(), []);
   const [tipo, setTipo] = React.useState<Funcionario['tipo_contrato']>(funcionario?.tipo_contrato ?? 'horista');
   const [status, setStatus] = React.useState<Funcionario['status']>(funcionario?.status ?? 'ativo');
   const [salarioHora, setSalarioHora] = React.useState<number>(funcionario?.salario_hora ?? 0);
   const [salarioMes, setSalarioMes] = React.useState<number>(funcionario?.salario_mes ?? 0);
+  const [obraAdmissaoId, setObraAdmissaoId] = React.useState<string>('');
   const [pending, startTransition] = React.useTransition();
   const isEdit = Boolean(funcionario?.id);
 
@@ -78,14 +80,44 @@ export function FuncionarioForm({ funcionario }: Props) {
     }
 
     startTransition(async () => {
-      const { error } = isEdit
-        ? await supabase.from('funcionarios').update(payload).eq('id', funcionario!.id)
-        : await supabase.from('funcionarios').insert(payload);
-      if (error) {
-        toast.error(error.message);
+      if (isEdit) {
+        const { error } = await supabase.from('funcionarios').update(payload).eq('id', funcionario!.id);
+        if (error) { toast.error(error.message); return; }
+        toast.success('Funcionário atualizado.');
+        router.push('/funcionarios');
+        router.refresh();
         return;
       }
-      toast.success(isEdit ? 'Funcionário atualizado.' : 'Funcionário cadastrado.');
+
+      // Novo funcionário: insere e captura o id pra já vincular à obra
+      const payloadNovo = obraAdmissaoId
+        ? { ...payload, obra_admissao_id: obraAdmissaoId, obra_atual_id: obraAdmissaoId }
+        : payload;
+      const { data: novo, error } = await supabase
+        .from('funcionarios')
+        .insert(payloadNovo)
+        .select('id')
+        .single();
+      if (error) { toast.error(error.message); return; }
+
+      // Cria o registro de admissão no histórico de obra
+      if (obraAdmissaoId && novo?.id) {
+        const dataAdm = payload.data_admissao || new Date().toISOString().slice(0, 10);
+        const { error: histErr } = await supabase.from('funcionario_obra_historico').insert({
+          funcionario_id: novo.id,
+          obra_id: obraAdmissaoId,
+          data_inicio: dataAdm,
+          motivo: 'admissao',
+        });
+        if (histErr) {
+          // Funcionário já foi criado — avisa mas não bloqueia
+          toast.error(`Funcionário criado, mas falhou ao vincular obra: ${histErr.message}`);
+          router.push(`/funcionarios/${novo.id}`);
+          router.refresh();
+          return;
+        }
+      }
+      toast.success(obraAdmissaoId ? 'Funcionário cadastrado e vinculado à obra.' : 'Funcionário cadastrado.');
       router.push('/funcionarios');
       router.refresh();
     });
@@ -144,6 +176,24 @@ export function FuncionarioForm({ funcionario }: Props) {
           />
           <TextField label="Data de desligamento" name="data_desligamento" type="date" defaultValue={funcionario?.data_desligamento ?? ''} />
         </div>
+
+        {!isEdit ? (
+          <Field label="Obra de admissão" name="obra_admissao_id">
+            <Select value={obraAdmissaoId || '__none__'} onValueChange={(v) => setObraAdmissaoId(v === '__none__' ? '' : v)}>
+              <SelectTrigger><SelectValue placeholder="Vincular o funcionário a uma obra agora (recomendado)" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">— vincular depois —</SelectItem>
+                {obras.map((o) => (
+                  <SelectItem key={o.id} value={o.id}>{o.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="mt-1 text-xs text-brand-500">
+              Os custos recorrentes (salário, encargos) caem nesta obra. Custos admissionais (ASO, exames, EPI de admissão)
+              ficam travados nela. Você pode realocar depois na tela do funcionário.
+            </p>
+          </Field>
+        ) : null}
 
         <div className="rounded-[12px] border border-brand-100 bg-brand-50/40 p-4 space-y-3">
           <h4 className="text-xs font-bold uppercase tracking-widest text-brand-600">Período de experiência</h4>
