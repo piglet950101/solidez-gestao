@@ -458,7 +458,7 @@ export type Database = {
           funcionario_id: string;
           tipo: string;
           descricao: string | null;
-          storage_path: string;
+          storage_path: string | null;
           data_realizacao: string | null;
           validade: string | null;
           criado_por: string | null;
@@ -469,7 +469,7 @@ export type Database = {
           funcionario_id: string;
           tipo: string;
           descricao?: string | null;
-          storage_path: string;
+          storage_path?: string | null;
           data_realizacao?: string | null;
           validade?: string | null;
         };

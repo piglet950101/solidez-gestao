@@ -99,7 +99,7 @@ export default async function EditarFuncionarioPage({
 
       <DocumentosFuncionario
         funcionarioId={funcionario.id}
-        documentos={(documentos ?? []) as { id: string; tipo: string; descricao: string | null; storage_path: string; data_realizacao: string | null; validade: string | null; criado_em: string }[]}
+        documentos={(documentos ?? []) as { id: string; tipo: string; descricao: string | null; storage_path: string | null; data_realizacao: string | null; validade: string | null; criado_em: string }[]}
       />
 
       <EpiHistoricoFuncionario

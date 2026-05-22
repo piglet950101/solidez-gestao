@@ -259,7 +259,12 @@ export function FuncionarioForm({ funcionario, obras = [] }: Props) {
             <input type="checkbox" name="tem_os_curso" defaultChecked={funcionario?.tem_os_curso ?? false} className="size-4 accent-brand-700" />
             <span>Possui OS curso (NR-35, NR-18 etc.)</span>
           </label>
-          <TextField label="Validade OS curso" name="os_curso_validade" type="date" defaultValue={funcionario?.os_curso_validade ?? ''} className="md:col-span-2" />
+          <TextField label="Validade OS curso (resumo)" name="os_curso_validade" type="date" defaultValue={funcionario?.os_curso_validade ?? ''} className="md:col-span-2" />
+          {isEdit ? (
+            <div className="md:col-span-2 rounded-md border border-brand-100 bg-brand-50/60 px-3 py-2 text-xs text-brand-700">
+              <strong>Cada NR/curso com data de realização e validade própria</strong> vai no quadro <strong>"Documentos"</strong> no topo desta página — lá você registra a data que o funcionário fez o curso, a validade calcula automático (e gera alerta de vencimento). Pode registrar só as datas, sem anexar arquivo. O campo acima é só um resumo opcional.
+            </div>
+          ) : null}
           <TextField label="Tamanho sapato" name="tamanho_sapato" defaultValue={funcionario?.tamanho_sapato ?? ''} />
           <TextField label="Tamanho camiseta" name="tamanho_camiseta" defaultValue={funcionario?.tamanho_camiseta ?? ''} />
           <TextField label="Tamanho calça" name="tamanho_calca" defaultValue={funcionario?.tamanho_calca ?? ''} className="md:col-span-2" />

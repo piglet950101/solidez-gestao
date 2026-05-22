@@ -156,7 +156,8 @@ const DocSchema = z.object({
   descricao: optionalString,
   data_realizacao: z.preprocess(emptyToNull, z.string().nullable().optional()),
   validade: z.preprocess(emptyToNull, z.string().nullable().optional()),
-  storage_path: z.string().min(5),
+  // Opcional — permite registrar um curso só com as datas, sem anexar arquivo.
+  storage_path: optionalString,
 });
 
 export async function registrarDocumentoFuncionario(funcionario_id: string, formData: FormData) {
@@ -172,17 +173,17 @@ export async function registrarDocumentoFuncionario(funcionario_id: string, form
     descricao: parsed.data.descricao ?? null,
     data_realizacao: parsed.data.data_realizacao ?? null,
     validade: parsed.data.validade ?? null,
-    storage_path: parsed.data.storage_path,
+    storage_path: parsed.data.storage_path ?? null,
   } as never);
   if (error) return { error: error.message };
   revalidatePath(`/funcionarios/${funcionario_id}`);
   return {};
 }
 
-export async function excluirDocumentoFuncionario(documento_id: string, funcionario_id: string, storage_path: string) {
+export async function excluirDocumentoFuncionario(documento_id: string, funcionario_id: string, storage_path: string | null) {
   const supabase = await createClient();
-  // Best-effort: remove o arquivo do storage; mesmo se falhar, remove a linha do DB.
-  await supabase.storage.from('funcionario-docs').remove([storage_path]);
+  // Best-effort: remove o arquivo do storage (se houver); mesmo se falhar, remove a linha do DB.
+  if (storage_path) await supabase.storage.from('funcionario-docs').remove([storage_path]);
   const { error } = await supabase.from('funcionario_documentos').delete().eq('id', documento_id);
   if (error) return { error: error.message };
   revalidatePath(`/funcionarios/${funcionario_id}`);

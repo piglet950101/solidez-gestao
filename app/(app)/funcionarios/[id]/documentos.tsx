@@ -18,7 +18,7 @@ interface Documento {
   id: string;
   tipo: string;
   descricao: string | null;
-  storage_path: string;
+  storage_path: string | null;
   data_realizacao: string | null;
   validade: string | null;
   criado_em: string;
@@ -88,22 +88,27 @@ export function DocumentosFuncionario({ funcionarioId, documentos }: Props) {
 
   async function onUpload(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!file) {
-      toast.error('Selecione um arquivo.');
+    // Validação mínima: precisa de um arquivo OU de uma data de realização/validade
+    // (registro de curso só com datas é permitido).
+    if (!file && !dataRealizacao && !validade) {
+      toast.error('Anexe um arquivo ou informe a data de realização / validade.');
       return;
     }
     setUploading(true);
     try {
-      const ext = file.name.split('.').pop() ?? 'pdf';
-      const path = `${funcionarioId}/${tipo}-${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from('funcionario-docs').upload(path, file);
-      if (upErr) {
-        toast.error(upErr.message);
-        return;
+      let path: string | null = null;
+      if (file) {
+        const ext = file.name.split('.').pop() ?? 'pdf';
+        path = `${funcionarioId}/${tipo}-${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage.from('funcionario-docs').upload(path, file);
+        if (upErr) {
+          toast.error(upErr.message);
+          return;
+        }
       }
       const fd = new FormData();
       fd.set('tipo', tipo);
-      fd.set('storage_path', path);
+      if (path) fd.set('storage_path', path);
       if (descricao) fd.set('descricao', descricao);
       if (dataRealizacao) fd.set('data_realizacao', dataRealizacao);
       if (validade) fd.set('validade', validade);
@@ -111,10 +116,10 @@ export function DocumentosFuncionario({ funcionarioId, documentos }: Props) {
       if (res.error) {
         toast.error(res.error);
         // Best-effort: remove the uploaded file since metadata failed
-        await supabase.storage.from('funcionario-docs').remove([path]);
+        if (path) await supabase.storage.from('funcionario-docs').remove([path]);
         return;
       }
-      toast.success('Documento adicionado.');
+      toast.success(path ? 'Documento adicionado.' : 'Curso/data registrado.');
       setFile(null);
       setDataRealizacao('');
       setValidade('');
@@ -137,7 +142,7 @@ export function DocumentosFuncionario({ funcionarioId, documentos }: Props) {
     window.open(data.signedUrl, '_blank');
   }
 
-  async function onDelete(documentoId: string, storagePath: string) {
+  async function onDelete(documentoId: string, storagePath: string | null) {
     const res = await excluirDocumentoFuncionario(documentoId, funcionarioId, storagePath);
     if (res.error) {
       return res;
@@ -197,7 +202,7 @@ export function DocumentosFuncionario({ funcionarioId, documentos }: Props) {
             placeholder="Ex.: ASO periódico de janeiro/2027"
           />
           <div className="space-y-1.5 md:col-span-2">
-            <Label htmlFor="doc-file">Arquivo</Label>
+            <Label htmlFor="doc-file">Arquivo (opcional)</Label>
             <input
               id="doc-file"
               type="file"
@@ -205,10 +210,13 @@ export function DocumentosFuncionario({ funcionarioId, documentos }: Props) {
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               className="block w-full rounded-md border border-brand-200 bg-white px-3 py-2 text-sm file:mr-3 file:rounded file:border-0 file:bg-brand-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-brand-800"
             />
+            <p className="text-xs text-brand-500">
+              Pode deixar sem arquivo se quiser só registrar a data de realização e a validade do curso/NR. Anexe o certificado quando tiver.
+            </p>
           </div>
           <div className="md:col-span-2 flex justify-end">
-            <Button type="submit" variant="accent" disabled={uploading || !file}>
-              <Upload className="size-4" /> {uploading ? 'Enviando…' : 'Adicionar documento'}
+            <Button type="submit" variant="accent" disabled={uploading || (!file && !dataRealizacao && !validade)}>
+              <Upload className="size-4" /> {uploading ? 'Salvando…' : 'Adicionar'}
             </Button>
           </div>
         </form>
@@ -251,9 +259,13 @@ export function DocumentosFuncionario({ funcionarioId, documentos }: Props) {
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Button type="button" variant="ghost" size="icon" onClick={() => onDownload(d.storage_path)} aria-label="Baixar">
-                      <Download className="size-4" />
-                    </Button>
+                    {d.storage_path ? (
+                      <Button type="button" variant="ghost" size="icon" onClick={() => onDownload(d.storage_path as string)} aria-label="Baixar">
+                        <Download className="size-4" />
+                      </Button>
+                    ) : (
+                      <span className="px-2 text-xs italic text-brand-400">sem anexo</span>
+                    )}
                     <ConfirmDeleteDialog
                       iconOnly
                       title="Excluir documento"
