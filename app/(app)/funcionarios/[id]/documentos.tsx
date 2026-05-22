@@ -19,25 +19,36 @@ interface Documento {
   tipo: string;
   descricao: string | null;
   storage_path: string;
+  data_realizacao: string | null;
   validade: string | null;
   criado_em: string;
 }
 
+// validadeMeses: período padrão de reciclagem da NR (null = sem auto-cálculo).
 const TIPOS = [
-  { value: 'ASO_admissional', label: 'ASO admissional' },
-  { value: 'ASO_periodico', label: 'ASO periódico' },
-  { value: 'ASO_demissional', label: 'ASO demissional' },
-  { value: 'NR10', label: 'NR-10' },
-  { value: 'NR18', label: 'NR-18' },
-  { value: 'NR35', label: 'NR-35' },
-  { value: 'contrato_admissional', label: 'Contrato admissional' },
-  { value: 'rescisao', label: 'Rescisão' },
-  { value: 'exame_complementar', label: 'Exame complementar' },
-  { value: 'outro', label: 'Outro' },
+  { value: 'ASO_admissional', label: 'ASO admissional', validadeMeses: null },
+  { value: 'ASO_periodico', label: 'ASO periódico', validadeMeses: 12 },
+  { value: 'ASO_demissional', label: 'ASO demissional', validadeMeses: null },
+  { value: 'NR06', label: 'NR-06 (EPI)', validadeMeses: 24 },
+  { value: 'NR10', label: 'NR-10 (Eletricidade)', validadeMeses: 24 },
+  { value: 'NR18', label: 'NR-18 (Construção civil)', validadeMeses: 24 },
+  { value: 'NR33', label: 'NR-33 (Espaço confinado)', validadeMeses: 12 },
+  { value: 'NR35', label: 'NR-35 (Trabalho em altura)', validadeMeses: 24 },
+  { value: 'contrato_admissional', label: 'Contrato admissional', validadeMeses: null },
+  { value: 'rescisao', label: 'Rescisão', validadeMeses: null },
+  { value: 'exame_complementar', label: 'Exame complementar', validadeMeses: null },
+  { value: 'outro', label: 'Outro', validadeMeses: null },
 ];
 
 function labelDoTipo(tipo: string): string {
   return TIPOS.find((t) => t.value === tipo)?.label ?? tipo;
+}
+
+/** Soma `meses` a uma data ISO (YYYY-MM-DD) e devolve ISO. */
+function addMeses(dataISO: string, meses: number): string {
+  const d = new Date(dataISO + 'T00:00:00');
+  d.setMonth(d.getMonth() + meses);
+  return d.toISOString().slice(0, 10);
 }
 
 function diasAteValidade(validade: string | null): number | null {
@@ -56,9 +67,24 @@ export function DocumentosFuncionario({ funcionarioId, documentos }: Props) {
   const supabase = React.useMemo(() => createClient(), []);
   const [tipo, setTipo] = React.useState<string>('ASO_admissional');
   const [file, setFile] = React.useState<File | null>(null);
+  const [dataRealizacao, setDataRealizacao] = React.useState<string>('');
   const [validade, setValidade] = React.useState<string>('');
+  const [validadeAuto, setValidadeAuto] = React.useState<boolean>(false);
   const [descricao, setDescricao] = React.useState<string>('');
   const [uploading, setUploading] = React.useState(false);
+
+  const tipoMeta = TIPOS.find((t) => t.value === tipo);
+
+  // Auto-calcula a validade quando: o tipo tem período padrão + tem data de
+  // realização + a validade ainda não foi editada manualmente.
+  React.useEffect(() => {
+    if (tipoMeta?.validadeMeses && dataRealizacao) {
+      const calc = addMeses(dataRealizacao, tipoMeta.validadeMeses);
+      setValidade(calc);
+      setValidadeAuto(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tipo, dataRealizacao]);
 
   async function onUpload(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -79,6 +105,7 @@ export function DocumentosFuncionario({ funcionarioId, documentos }: Props) {
       fd.set('tipo', tipo);
       fd.set('storage_path', path);
       if (descricao) fd.set('descricao', descricao);
+      if (dataRealizacao) fd.set('data_realizacao', dataRealizacao);
       if (validade) fd.set('validade', validade);
       const res = await registrarDocumentoFuncionario(funcionarioId, fd);
       if (res.error) {
@@ -89,7 +116,9 @@ export function DocumentosFuncionario({ funcionarioId, documentos }: Props) {
       }
       toast.success('Documento adicionado.');
       setFile(null);
+      setDataRealizacao('');
       setValidade('');
+      setValidadeAuto(false);
       setDescricao('');
       const formEl = e.currentTarget as HTMLFormElement;
       formEl.reset();
@@ -144,12 +173,20 @@ export function DocumentosFuncionario({ funcionarioId, documentos }: Props) {
             </Select>
           </div>
           <TextField
+            label="Data de realização do curso"
+            name="data_realizacao"
+            type="date"
+            value={dataRealizacao}
+            onChange={(e) => setDataRealizacao(e.target.value)}
+            hint={tipoMeta?.validadeMeses ? `Ao informar, a validade é calculada automaticamente (+${tipoMeta.validadeMeses} meses).` : 'Quando o funcionário fez o curso/exame.'}
+          />
+          <TextField
             label="Validade"
             name="validade"
             type="date"
             value={validade}
-            onChange={(e) => setValidade(e.target.value)}
-            hint="Opcional. Para ASO/NR — vira alerta quando faltar 30 dias."
+            onChange={(e) => { setValidade(e.target.value); setValidadeAuto(false); }}
+            hint={validadeAuto ? '✓ Calculada automaticamente pelo tipo — pode ajustar se precisar.' : 'Vira alerta no painel quando faltar 30 dias.'}
           />
           <TextField
             label="Descrição"
@@ -194,7 +231,11 @@ export function DocumentosFuncionario({ funcionarioId, documentos }: Props) {
                       <div className="text-sm font-medium text-brand-900">{labelDoTipo(d.tipo)}</div>
                       {d.descricao ? <div className="text-xs text-brand-600">{d.descricao}</div> : null}
                       <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-                        <span className="text-brand-500">Adicionado em {formatDate(d.criado_em)}</span>
+                        {d.data_realizacao ? (
+                          <span className="text-brand-500">Realizado em {formatDate(d.data_realizacao)}</span>
+                        ) : (
+                          <span className="text-brand-500">Adicionado em {formatDate(d.criado_em)}</span>
+                        )}
                         {d.validade ? (
                           <Badge tone={tone}>
                             {dias === null

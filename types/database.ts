@@ -459,6 +459,7 @@ export type Database = {
           tipo: string;
           descricao: string | null;
           storage_path: string;
+          data_realizacao: string | null;
           validade: string | null;
           criado_por: string | null;
           criado_em: string;
@@ -469,6 +470,7 @@ export type Database = {
           tipo: string;
           descricao?: string | null;
           storage_path: string;
+          data_realizacao?: string | null;
           validade?: string | null;
         };
         Update: Partial<Database['public']['Tables']['funcionario_documentos']['Insert']>;

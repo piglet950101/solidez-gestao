@@ -140,8 +140,10 @@ const TIPOS_DOC = [
   'ASO_admissional',
   'ASO_periodico',
   'ASO_demissional',
+  'NR06',
   'NR10',
   'NR18',
+  'NR33',
   'NR35',
   'contrato_admissional',
   'rescisao',
@@ -152,6 +154,7 @@ const TIPOS_DOC = [
 const DocSchema = z.object({
   tipo: z.enum(TIPOS_DOC),
   descricao: optionalString,
+  data_realizacao: z.preprocess(emptyToNull, z.string().nullable().optional()),
   validade: z.preprocess(emptyToNull, z.string().nullable().optional()),
   storage_path: z.string().min(5),
 });
@@ -167,6 +170,7 @@ export async function registrarDocumentoFuncionario(funcionario_id: string, form
     funcionario_id,
     tipo: parsed.data.tipo,
     descricao: parsed.data.descricao ?? null,
+    data_realizacao: parsed.data.data_realizacao ?? null,
     validade: parsed.data.validade ?? null,
     storage_path: parsed.data.storage_path,
   } as never);

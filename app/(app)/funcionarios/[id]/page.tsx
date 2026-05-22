@@ -31,7 +31,7 @@ export default async function EditarFuncionarioPage({
       .order('data_inicio', { ascending: false }),
     supabase
       .from('funcionario_documentos')
-      .select('id, tipo, descricao, storage_path, validade, criado_em')
+      .select('id, tipo, descricao, storage_path, data_realizacao, validade, criado_em')
       .eq('funcionario_id', id)
       .order('criado_em', { ascending: false }),
     supabase
@@ -99,7 +99,7 @@ export default async function EditarFuncionarioPage({
 
       <DocumentosFuncionario
         funcionarioId={funcionario.id}
-        documentos={(documentos ?? []) as { id: string; tipo: string; descricao: string | null; storage_path: string; validade: string | null; criado_em: string }[]}
+        documentos={(documentos ?? []) as { id: string; tipo: string; descricao: string | null; storage_path: string; data_realizacao: string | null; validade: string | null; criado_em: string }[]}
       />
 
       <EpiHistoricoFuncionario

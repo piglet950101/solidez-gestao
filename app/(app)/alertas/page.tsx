@@ -19,6 +19,7 @@ const TIPO_LABEL: Record<string, string> = {
   imposto_pendente: 'Imposto pendente',
   lucro_em_risco: 'Lucro em risco',
   medicao_atrasada: 'Medição atrasada',
+  doc_funcionario_vencendo: 'Curso/documento vencendo',
 };
 
 export default async function AlertasPage() {
