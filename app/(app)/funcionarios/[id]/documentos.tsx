@@ -62,9 +62,10 @@ function metaDoTipo(tipo: string) {
   return TIPOS.find((t) => t.value === tipo);
 }
 function addMeses(dataISO: string, meses: number): string {
-  const d = new Date(dataISO + 'T00:00:00');
-  d.setMonth(d.getMonth() + meses);
-  return d.toISOString().slice(0, 10);
+  // Pure calendar arithmetic, evita drift de timezone (DST/offset).
+  const [y, m, d] = dataISO.split('-').map(Number);
+  const result = new Date(Date.UTC(y, m - 1 + meses, d));
+  return result.toISOString().slice(0, 10);
 }
 function diasAteValidade(validade: string | null): number | null {
   if (!validade) return null;
