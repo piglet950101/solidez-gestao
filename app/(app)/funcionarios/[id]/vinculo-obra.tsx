@@ -2,7 +2,7 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Building } from 'lucide-react';
+import { Building, Pencil } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -19,7 +19,7 @@ import { TextField, TextareaField } from '@/components/ui/form-field';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, THead, TBody, TR, TH, TD } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { transferirFuncionario } from '@/actions/funcionarios';
+import { transferirFuncionario, corrigirObraAdmissao } from '@/actions/funcionarios';
 import { formatDate } from '@/lib/format';
 
 interface AlocRow {
@@ -113,12 +113,20 @@ export function VinculoObraCard({
             ) : null}
           </div>
           {!isDesligado ? (
-            <Dialog open={open} onOpenChange={setOpen}>
-              <DialogTrigger asChild>
-                <Button type="button" variant="outline" size="sm">
-                  <Building className="size-4" /> {buttonLabel}
-                </Button>
-              </DialogTrigger>
+            <div className="flex flex-wrap items-center gap-2">
+              {obraAdmissaoNome ? (
+                <CorrigirAdmissaoDialog
+                  funcionarioId={funcionarioId}
+                  obras={obras}
+                  obraAtualAdmissao={obraAdmissaoNome}
+                />
+              ) : null}
+              <Dialog open={open} onOpenChange={setOpen}>
+                <DialogTrigger asChild>
+                  <Button type="button" variant="outline" size="sm">
+                    <Building className="size-4" /> {buttonLabel}
+                  </Button>
+                </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>{buttonLabel}</DialogTitle>
@@ -162,7 +170,8 @@ export function VinculoObraCard({
                   </DialogFooter>
                 </form>
               </DialogContent>
-            </Dialog>
+              </Dialog>
+            </div>
           ) : null}
         </div>
 
@@ -196,5 +205,84 @@ export function VinculoObraCard({
         ) : null}
       </CardContent>
     </Card>
+  );
+}
+
+// ===========================================================================
+// Dialog para corrigir a obra de admissão (sem criar transferência nova).
+// Útil pra funcionários antigos que foram cadastrados depois e cujo histórico
+// real de obras não foi rastreado desde o começo.
+// ===========================================================================
+
+function CorrigirAdmissaoDialog({
+  funcionarioId,
+  obras,
+  obraAtualAdmissao,
+}: {
+  funcionarioId: string;
+  obras: { id: string; nome: string }[];
+  obraAtualAdmissao: string;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = React.useState(false);
+  const [obraId, setObraId] = React.useState<string>('');
+  const [pending, startTransition] = React.useTransition();
+
+  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!obraId) { toast.error('Escolha a obra.'); return; }
+    const fd = new FormData(e.currentTarget);
+    fd.set('obra_id', obraId);
+    startTransition(async () => {
+      const res = await corrigirObraAdmissao(funcionarioId, fd);
+      if (res.error) { toast.error(res.error); return; }
+      toast.success('Obra de admissão corrigida.');
+      setOpen(false);
+      setObraId('');
+      router.refresh();
+    });
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button type="button" variant="ghost" size="sm" className="text-brand-600">
+          <Pencil className="size-3.5" /> Corrigir admissão
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Corrigir obra de admissão</DialogTitle>
+          <DialogDescription>
+            Atual: <strong>{obraAtualAdmissao}</strong>. Use isso pra funcionários antigos que foram cadastrados depois do
+            controle de obras, OU pra ajustar o vínculo inicial sem criar uma nova transferência. Não muda a obra atual nem
+            o histórico de transferências futuras.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={onSubmit} className="space-y-3">
+          <div className="space-y-1.5">
+            <Label>Obra de admissão correta</Label>
+            <Select value={obraId} onValueChange={setObraId}>
+              <SelectTrigger><SelectValue placeholder="Selecione a obra" /></SelectTrigger>
+              <SelectContent>
+                {obras.map((o) => (
+                  <SelectItem key={o.id} value={o.id}>{o.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <TextField
+            label="Data de admissão (opcional)"
+            name="data_admissao"
+            type="date"
+            hint="Se preencher, atualiza também a data do registro de admissão no histórico."
+          />
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={pending}>Cancelar</Button>
+            <Button type="submit" variant="accent" disabled={pending}>{pending ? 'Salvando…' : 'Corrigir'}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

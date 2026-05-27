@@ -460,6 +460,19 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
           Detalhe linha por linha quando a NF tem múltiplos itens. Ao salvar, cada item entra no estoque automaticamente com seu custo unitário.
           Se preferir uma compra sem detalhamento (ex.: serviço), deixe em branco.
         </p>
+        {(() => {
+          const cat = categorias.find((c) => c.id === categoriaId);
+          const ehMaterialOuEpi = cat && (cat.nome === 'EPI' || cat.nome === 'Material' || cat.subtipo === null && /EPI|material/i.test(cat.nome));
+          if (ehMaterialOuEpi && linhasItens.length === 0 && valorTotal > 0) {
+            return (
+              <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                <strong>Categoria {cat.nome}:</strong> recomendado detalhar a compra por item (qtd × valor unitário) pra alimentar o estoque automaticamente.
+                Use "+ Adicionar linha" abaixo. Sem detalhamento, o estoque não atualiza.
+              </p>
+            );
+          }
+          return null;
+        })()}
         {linhasItens.map((linha, idx) => {
           const itemSel = itensList.find((i) => i.id === linha.item_id);
           return (

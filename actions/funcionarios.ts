@@ -189,3 +189,136 @@ export async function excluirDocumentoFuncionario(documento_id: string, funciona
   revalidatePath(`/funcionarios/${funcionario_id}`);
   return {};
 }
+
+/** Renova / atualiza a data de realização e/ou validade de um documento existente. */
+const AtualizarDocSchema = z.object({
+  data_realizacao: z.preprocess(emptyToNull, z.string().nullable().optional()),
+  validade: z.preprocess(emptyToNull, z.string().nullable().optional()),
+});
+
+export async function atualizarDocumentoFuncionario(documento_id: string, funcionario_id: string, formData: FormData) {
+  const parsed = AtualizarDocSchema.safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return { error: issue ? `${issue.path.join('.')}: ${issue.message}` : 'Dados inválidos.' };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('funcionario_documentos')
+    .update({
+      data_realizacao: parsed.data.data_realizacao ?? null,
+      validade: parsed.data.validade ?? null,
+    } as never)
+    .eq('id', documento_id);
+  if (error) return { error: error.message };
+  revalidatePath(`/funcionarios/${funcionario_id}`);
+  return {};
+}
+
+/**
+ * Cadastra vários documentos de admissão em uma única operação, todos
+ * compartilhando o mesmo arquivo (PDF combinado: contrato + ASO + NRs).
+ * Cada entrada é { tipo, data_realizacao, validade } — vazias são ignoradas.
+ */
+const BulkAdmissaoSchema = z.object({
+  storage_path: optionalString,
+  docs_json: z.string(),
+});
+
+const BulkDocItemSchema = z.object({
+  tipo: z.enum(TIPOS_DOC),
+  data_realizacao: z.preprocess(emptyToNull, z.string().nullable().optional()),
+  validade: z.preprocess(emptyToNull, z.string().nullable().optional()),
+});
+
+export async function registrarAdmissaoEmLote(funcionario_id: string, formData: FormData) {
+  const parsed = BulkAdmissaoSchema.safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return { error: issue ? `${issue.path.join('.')}: ${issue.message}` : 'Dados inválidos.' };
+  }
+  let docsInput: { tipo: string; data_realizacao?: string | null; validade?: string | null }[];
+  try {
+    docsInput = z.array(BulkDocItemSchema).parse(JSON.parse(parsed.data.docs_json));
+  } catch {
+    return { error: 'Estrutura de documentos inválida.' };
+  }
+  // Filtra os preenchidos (com pelo menos data_realizacao ou validade)
+  const validos = docsInput.filter((d) => d.data_realizacao || d.validade);
+  if (validos.length === 0) {
+    return { error: 'Preencha pelo menos uma data de realização ou validade.' };
+  }
+
+  const supabase = await createClient();
+  const rows = validos.map((d) => ({
+    funcionario_id,
+    tipo: d.tipo,
+    data_realizacao: d.data_realizacao ?? null,
+    validade: d.validade ?? null,
+    storage_path: parsed.data.storage_path ?? null,
+  }));
+  const { error } = await supabase.from('funcionario_documentos').insert(rows as never);
+  if (error) return { error: error.message };
+  revalidatePath(`/funcionarios/${funcionario_id}`);
+  return { ok: true, count: validos.length };
+}
+
+/** Corrige a obra de admissão de um funcionário (atualiza o snapshot + a linha
+ * de histórico marcada como motivo='admissao'). Não cria nova transferência.
+ * Útil para funcionários antigos cadastrados antes do controle de obras existir.
+ */
+const CorrigirAdmissaoSchema = z.object({
+  obra_id: z.string().uuid(),
+  data_admissao: z.preprocess(emptyToNull, z.string().nullable().optional()),
+});
+
+export async function corrigirObraAdmissao(funcionario_id: string, formData: FormData) {
+  const parsed = CorrigirAdmissaoSchema.safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return { error: issue ? `${issue.path.join('.')}: ${issue.message}` : 'Dados inválidos.' };
+  }
+  const supabase = await createClient();
+  // Atualiza o registro de admissão existente (ou cria, se não houver)
+  const { data: existing } = await supabase
+    .from('funcionario_obra_historico')
+    .select('id')
+    .eq('funcionario_id', funcionario_id)
+    .eq('motivo', 'admissao')
+    .maybeSingle();
+
+  if (existing) {
+    const updatePayload: Record<string, unknown> = { obra_id: parsed.data.obra_id };
+    if (parsed.data.data_admissao) updatePayload.data_inicio = parsed.data.data_admissao;
+    const { error: e1 } = await supabase
+      .from('funcionario_obra_historico')
+      .update(updatePayload as never)
+      .eq('id', existing.id);
+    if (e1) return { error: e1.message };
+  } else {
+    const { error: e1 } = await supabase.from('funcionario_obra_historico').insert({
+      funcionario_id,
+      obra_id: parsed.data.obra_id,
+      data_inicio: parsed.data.data_admissao ?? new Date().toISOString().slice(0, 10),
+      motivo: 'admissao',
+    } as never);
+    if (e1) return { error: e1.message };
+  }
+
+  // Atualiza o snapshot na funcionarios
+  const updateFunc: Record<string, unknown> = { obra_admissao_id: parsed.data.obra_id };
+  // Se ainda não tem obra atual, define a admissao como atual também
+  const { data: f } = await supabase
+    .from('funcionarios')
+    .select('obra_atual_id, data_admissao')
+    .eq('id', funcionario_id)
+    .maybeSingle();
+  if (!f?.obra_atual_id) updateFunc.obra_atual_id = parsed.data.obra_id;
+  if (parsed.data.data_admissao && !f?.data_admissao) updateFunc.data_admissao = parsed.data.data_admissao;
+
+  const { error: e2 } = await supabase.from('funcionarios').update(updateFunc as never).eq('id', funcionario_id);
+  if (e2) return { error: e2.message };
+
+  revalidatePath(`/funcionarios/${funcionario_id}`);
+  return { ok: true };
+}
