@@ -61,6 +61,21 @@ function labelDoTipo(tipo: string): string {
 function metaDoTipo(tipo: string) {
   return TIPOS.find((t) => t.value === tipo);
 }
+// Supabase Storage tem cap global de 50 MB no plano free.
+// Pra evitar erro feio "The object exceeded the maximum allowed size", barramos client-side.
+const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+function checkFileSize(file: File): string | null {
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return `Arquivo de ${formatBytes(file.size)} excede o limite de 50 MB. Comprima/reduza a qualidade do PDF, ou faça upload dos documentos separados via "Adicionar documento avulso".`;
+  }
+  return null;
+}
+
 function addMeses(dataISO: string, meses: number): string {
   // Pure calendar arithmetic, evita drift de timezone (DST/offset).
   const parts = dataISO.split('-');
@@ -215,6 +230,10 @@ function BulkAdmissaoForm({
       toast.error('Preencha a data de pelo menos um documento.');
       return;
     }
+    if (file) {
+      const sizeErr = checkFileSize(file);
+      if (sizeErr) { toast.error(sizeErr); return; }
+    }
     setPending(true);
     try {
       let path: string | null = null;
@@ -293,12 +312,25 @@ function BulkAdmissaoForm({
           id="bulk-file"
           type="file"
           accept="application/pdf,image/*"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          onChange={(e) => {
+            const f = e.target.files?.[0] ?? null;
+            if (f) {
+              const err = checkFileSize(f);
+              if (err) { toast.error(err); e.target.value = ''; setFile(null); return; }
+            }
+            setFile(f);
+          }}
           className="block w-full rounded-md border border-brand-200 bg-white px-3 py-2 text-sm file:mr-3 file:rounded file:border-0 file:bg-brand-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-brand-800"
         />
-        <p className="text-xs text-brand-500">
-          Pode salvar agora só com as datas e anexar o PDF depois (em qualquer um dos documentos via "Adicionar documento avulso").
-        </p>
+        {file ? (
+          <p className={`text-xs ${file.size > MAX_UPLOAD_BYTES * 0.8 ? 'text-amber-700' : 'text-brand-600'}`}>
+            {file.name} · <span className="font-mono">{formatBytes(file.size)}</span> de 50 MB
+          </p>
+        ) : (
+          <p className="text-xs text-brand-500">
+            Limite de <strong>50 MB por arquivo</strong>. Se o PDF for maior, comprima (CamScanner / iLovePDF) ou anexe cada documento separado em "Adicionar documento avulso". Pode salvar agora só com as datas e anexar depois.
+          </p>
+        )}
       </div>
       <div className="flex justify-end">
         <Button type="submit" variant="accent" disabled={pending}>
@@ -344,6 +376,10 @@ function AvulsoDocForm({
     if (!file && !dataRealizacao && !validade) {
       toast.error('Anexe um arquivo ou informe a data de realização / validade.');
       return;
+    }
+    if (file) {
+      const sizeErr = checkFileSize(file);
+      if (sizeErr) { toast.error(sizeErr); return; }
     }
     setUploading(true);
     try {
@@ -418,9 +454,23 @@ function AvulsoDocForm({
           id="avulso-file"
           type="file"
           accept="application/pdf,image/*"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          onChange={(e) => {
+            const f = e.target.files?.[0] ?? null;
+            if (f) {
+              const err = checkFileSize(f);
+              if (err) { toast.error(err); e.target.value = ''; setFile(null); return; }
+            }
+            setFile(f);
+          }}
           className="block w-full rounded-md border border-brand-200 bg-white px-3 py-2 text-sm file:mr-3 file:rounded file:border-0 file:bg-brand-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-brand-800"
         />
+        {file ? (
+          <p className={`text-xs ${file.size > MAX_UPLOAD_BYTES * 0.8 ? 'text-amber-700' : 'text-brand-600'}`}>
+            {file.name} · <span className="font-mono">{formatBytes(file.size)}</span> de 50 MB
+          </p>
+        ) : (
+          <p className="text-xs text-brand-500">Limite de 50 MB por arquivo.</p>
+        )}
       </div>
       <div className="md:col-span-2 flex justify-end">
         <Button type="submit" variant="accent" disabled={uploading || (!file && !dataRealizacao && !validade)}>
