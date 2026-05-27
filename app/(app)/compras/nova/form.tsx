@@ -397,58 +397,8 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
       </div>
 
       <div className="space-y-2 rounded-[14px] border border-brand-100 bg-brand-50/30 p-4">
-        <h3 className="text-sm font-semibold uppercase tracking-widest text-brand-600">Despesa de funcionário (opcional)</h3>
-        <p className="text-xs text-brand-600">
-          Marque quando a despesa é vinculada a um colaborador — o rateio é pré-preenchido conforme a obra dele na fase escolhida
-          (admissional → obra de origem, recorrente → obra atual, demissional → última obra).
-        </p>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label>Funcionário</Label>
-            <Select
-              value={funcionarioId || '__none__'}
-              onValueChange={(v) => setFuncionarioId(v === '__none__' ? '' : v)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="(não vinculada a funcionário)" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">— não vinculada —</SelectItem>
-                {funcionarios.map((f) => (
-                  <SelectItem key={f.id} value={f.id}>
-                    {f.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          {funcionarioId ? (
-            <div className="space-y-1.5">
-              <Label>Fase do custo</Label>
-              <Select value={faseFuncionario} onValueChange={(v) => setFaseFuncionario(v as FaseFuncionario)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admissional">Admissional — fica na obra de origem</SelectItem>
-                  <SelectItem value="recorrente">Recorrente — segue a obra atual</SelectItem>
-                  <SelectItem value="demissional">Demissional — fica na última obra</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          ) : null}
-        </div>
-        {funcionarioId && !obraResolvidaParaFunc ? (
-          <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            O funcionário escolhido ainda não tem obra na fase selecionada. Vincule-o a uma obra primeiro (em /funcionarios)
-            ou ajuste o rateio manualmente abaixo.
-          </p>
-        ) : null}
-      </div>
-
-      <div className="space-y-2 rounded-[14px] border border-brand-100 bg-brand-50/30 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold uppercase tracking-widest text-brand-600">Itens da NF (opcional)</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-widest text-brand-600">Itens da nota — quantidade × valor unitário</h3>
           <div className="text-xs text-brand-500">
             Soma das linhas: <span className={Math.abs(linhasItens.reduce((s, l) => s + l.quantidade * l.valor_unitario, 0) - valorTotal) <= 0.05 && linhasItens.length > 0 ? 'font-mono font-semibold text-emerald-700' : 'font-mono text-brand-700'}>
               R$ {linhasItens.reduce((s, l) => s + l.quantidade * l.valor_unitario, 0).toFixed(2)}
@@ -568,6 +518,56 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
         {itensList.length === 0 ? (
           <p className="text-xs text-amber-700">
             Nenhum item cadastrado ainda. Use o botão "+" ao lado do Select pra cadastrar rápido, ou cadastre completos em <Link href="/itens/novo" className="underline">/itens/novo</Link>.
+          </p>
+        ) : null}
+      </div>
+
+      <div className="space-y-2 rounded-[14px] border border-brand-100 bg-brand-50/30 p-4">
+        <h3 className="text-sm font-semibold uppercase tracking-widest text-brand-600">Despesa de funcionário (opcional)</h3>
+        <p className="text-xs text-brand-600">
+          Marque quando a despesa é vinculada a um colaborador — o rateio é pré-preenchido conforme a obra dele na fase escolhida
+          (admissional → obra de origem, recorrente → obra atual, demissional → última obra).
+        </p>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label>Funcionário</Label>
+            <Select
+              value={funcionarioId || '__none__'}
+              onValueChange={(v) => setFuncionarioId(v === '__none__' ? '' : v)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="(não vinculada a funcionário)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">— não vinculada —</SelectItem>
+                {funcionarios.map((f) => (
+                  <SelectItem key={f.id} value={f.id}>
+                    {f.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {funcionarioId ? (
+            <div className="space-y-1.5">
+              <Label>Fase do custo</Label>
+              <Select value={faseFuncionario} onValueChange={(v) => setFaseFuncionario(v as FaseFuncionario)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admissional">Admissional — fica na obra de origem</SelectItem>
+                  <SelectItem value="recorrente">Recorrente — segue a obra atual</SelectItem>
+                  <SelectItem value="demissional">Demissional — fica na última obra</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
+        </div>
+        {funcionarioId && !obraResolvidaParaFunc ? (
+          <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            O funcionário escolhido ainda não tem obra na fase selecionada. Vincule-o a uma obra primeiro (em /funcionarios)
+            ou ajuste o rateio manualmente abaixo.
           </p>
         ) : null}
       </div>
