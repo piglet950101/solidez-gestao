@@ -231,6 +231,135 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
     });
   }
 
+  // === Itens da nota — bloco extraído pra ser renderizado entre Categoria e o resto dos campos
+  const itensDaNotaBlock = (
+    <div className="space-y-2 rounded-[14px] border border-brand-100 bg-brand-50/30 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold uppercase tracking-widest text-brand-600">Itens da nota — quantidade × valor unitário</h3>
+        <div className="text-xs text-brand-500">
+          Soma das linhas: <span className={Math.abs(linhasItens.reduce((s, l) => s + l.quantidade * l.valor_unitario, 0) - valorTotal) <= 0.05 && linhasItens.length > 0 ? 'font-mono font-semibold text-emerald-700' : 'font-mono text-brand-700'}>
+            R$ {linhasItens.reduce((s, l) => s + l.quantidade * l.valor_unitario, 0).toFixed(2)}
+          </span>
+          <span className="ml-2 text-brand-500">/ R$ {valorTotal.toFixed(2)}</span>
+        </div>
+      </div>
+      <p className="text-xs text-brand-600">
+        Detalhe linha por linha quando a NF tem múltiplos itens. Ao salvar, cada item entra no estoque automaticamente com seu custo unitário.
+        Se preferir uma compra sem detalhamento (ex.: serviço), deixe em branco.
+      </p>
+      {(() => {
+        const cat = categorias.find((c) => c.id === categoriaId);
+        const ehMaterialOuEpi = cat && (cat.nome === 'EPI' || cat.nome === 'Material' || cat.subtipo === null && /EPI|material/i.test(cat.nome));
+        if (ehMaterialOuEpi && linhasItens.length === 0 && valorTotal > 0) {
+          return (
+            <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              <strong>Categoria {cat.nome}:</strong> recomendado detalhar a compra por item (qtd × valor unitário) pra alimentar o estoque automaticamente.
+              Use "+ Adicionar linha" abaixo. Sem detalhamento, o estoque não atualiza.
+            </p>
+          );
+        }
+        return null;
+      })()}
+      {linhasItens.map((linha, idx) => {
+        const itemSel = itensList.find((i) => i.id === linha.item_id);
+        return (
+          <div key={idx} className="space-y-1 rounded-md border border-brand-100 bg-white p-2">
+            <div className="grid grid-cols-12 items-end gap-2">
+              <div className="col-span-5">
+                <Label className="text-xs">{idx === 0 ? 'Item' : ''}</Label>
+                <div className="flex items-stretch gap-2">
+                  <div className="min-w-0 flex-1">
+                    <Select
+                      value={linha.item_id || '__none__'}
+                      onValueChange={(v) => {
+                        const novo = v === '__none__' ? '' : v;
+                        const it = itensList.find((i) => i.id === novo);
+                        setLinhasItens(linhasItens.map((l, i) => i === idx ? { ...l, item_id: novo, valor_unitario: l.valor_unitario || (it?.valor_medio ?? 0) } : l));
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">— selecione —</SelectItem>
+                        {itensList.map((it) => (
+                          <SelectItem key={it.id} value={it.id}>
+                            {it.nome} ({it.unidade})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <ItemQuickAddDialog
+                    onCreated={(novo) => {
+                      setItensList((prev) => [...prev, { ...novo, valor_medio: null }].sort((a, b) => a.nome.localeCompare(b.nome)));
+                      setLinhasItens(linhasItens.map((l, i) => i === idx ? { ...l, item_id: novo.id } : l));
+                    }}
+                  />
+                </div>
+              </div>
+              <div className="col-span-3">
+                <Label className="text-xs">{idx === 0 ? `Qtd${itemSel ? ` (${itemSel.unidade})` : ''}` : ''}</Label>
+                <input
+                  type="number"
+                  step="0.001"
+                  min="0"
+                  value={linha.quantidade || ''}
+                  onChange={(e) => setLinhasItens(linhasItens.map((l, i) => i === idx ? { ...l, quantidade: Number(e.target.value) } : l))}
+                  className="block w-full rounded-md border border-brand-200 bg-white px-3 py-2 font-mono text-sm"
+                />
+              </div>
+              <div className="col-span-3">
+                <Label className="text-xs">{idx === 0 ? 'Valor unitário (R$)' : ''}</Label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={linha.valor_unitario || ''}
+                  onChange={(e) => setLinhasItens(linhasItens.map((l, i) => i === idx ? { ...l, valor_unitario: Number(e.target.value) } : l))}
+                  className="block w-full rounded-md border border-brand-200 bg-white px-3 py-2 font-mono text-sm"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="col-span-1"
+                onClick={() => setLinhasItens(linhasItens.filter((_, i) => i !== idx))}
+                aria-label="Remover linha"
+              >
+                ✕
+              </Button>
+            </div>
+            <div>
+              <Label className="text-xs text-brand-500">Como veio na NF (opcional)</Label>
+              <input
+                type="text"
+                value={linha.observacao ?? ''}
+                onChange={(e) => setLinhasItens(linhasItens.map((l, i) => i === idx ? { ...l, observacao: e.target.value } : l))}
+                placeholder='Ex.: "DISCO CORTE INOX TYROLIT 4.1/2" — preserva a descrição exata do fornecedor pra rastreabilidade'
+                className="block w-full rounded-md border border-brand-100 bg-brand-50/40 px-3 py-1.5 text-xs"
+              />
+            </div>
+          </div>
+        );
+      })}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => setLinhasItens([...linhasItens, { item_id: '', quantidade: 1, valor_unitario: 0 }])}
+      >
+        + Adicionar linha
+      </Button>
+      {itensList.length === 0 ? (
+        <p className="text-xs text-amber-700">
+          Nenhum item cadastrado ainda. Use o botão "+" ao lado do Select pra cadastrar rápido, ou cadastre completos em <Link href="/itens/novo" className="underline">/itens/novo</Link>.
+        </p>
+      ) : null}
+    </div>
+  );
+
   return (
     <form onSubmit={onSubmit} className="space-y-6">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -279,7 +408,11 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
             </p>
           ) : null}
         </div>
+      </div>
 
+      {itensDaNotaBlock}
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-1.5">
           <Label>
             Veículo{categoriaExigeVeiculo ? <span className="ml-1 text-red-600">*</span> : null}
@@ -394,132 +527,6 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
             </Select>
           </div>
         )}
-      </div>
-
-      <div className="space-y-2 rounded-[14px] border border-brand-100 bg-brand-50/30 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold uppercase tracking-widest text-brand-600">Itens da nota — quantidade × valor unitário</h3>
-          <div className="text-xs text-brand-500">
-            Soma das linhas: <span className={Math.abs(linhasItens.reduce((s, l) => s + l.quantidade * l.valor_unitario, 0) - valorTotal) <= 0.05 && linhasItens.length > 0 ? 'font-mono font-semibold text-emerald-700' : 'font-mono text-brand-700'}>
-              R$ {linhasItens.reduce((s, l) => s + l.quantidade * l.valor_unitario, 0).toFixed(2)}
-            </span>
-            <span className="ml-2 text-brand-500">/ R$ {valorTotal.toFixed(2)}</span>
-          </div>
-        </div>
-        <p className="text-xs text-brand-600">
-          Detalhe linha por linha quando a NF tem múltiplos itens. Ao salvar, cada item entra no estoque automaticamente com seu custo unitário.
-          Se preferir uma compra sem detalhamento (ex.: serviço), deixe em branco.
-        </p>
-        {(() => {
-          const cat = categorias.find((c) => c.id === categoriaId);
-          const ehMaterialOuEpi = cat && (cat.nome === 'EPI' || cat.nome === 'Material' || cat.subtipo === null && /EPI|material/i.test(cat.nome));
-          if (ehMaterialOuEpi && linhasItens.length === 0 && valorTotal > 0) {
-            return (
-              <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                <strong>Categoria {cat.nome}:</strong> recomendado detalhar a compra por item (qtd × valor unitário) pra alimentar o estoque automaticamente.
-                Use "+ Adicionar linha" abaixo. Sem detalhamento, o estoque não atualiza.
-              </p>
-            );
-          }
-          return null;
-        })()}
-        {linhasItens.map((linha, idx) => {
-          const itemSel = itensList.find((i) => i.id === linha.item_id);
-          return (
-            <div key={idx} className="space-y-1 rounded-md border border-brand-100 bg-white p-2">
-              <div className="grid grid-cols-12 items-end gap-2">
-                <div className="col-span-5">
-                  <Label className="text-xs">{idx === 0 ? 'Item' : ''}</Label>
-                  <div className="flex items-stretch gap-2">
-                    <div className="min-w-0 flex-1">
-                      <Select
-                        value={linha.item_id || '__none__'}
-                        onValueChange={(v) => {
-                          const novo = v === '__none__' ? '' : v;
-                          const it = itensList.find((i) => i.id === novo);
-                          setLinhasItens(linhasItens.map((l, i) => i === idx ? { ...l, item_id: novo, valor_unitario: l.valor_unitario || (it?.valor_medio ?? 0) } : l));
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="__none__">— selecione —</SelectItem>
-                          {itensList.map((it) => (
-                            <SelectItem key={it.id} value={it.id}>
-                              {it.nome} ({it.unidade})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <ItemQuickAddDialog
-                      onCreated={(novo) => {
-                        setItensList((prev) => [...prev, { ...novo, valor_medio: null }].sort((a, b) => a.nome.localeCompare(b.nome)));
-                        setLinhasItens(linhasItens.map((l, i) => i === idx ? { ...l, item_id: novo.id } : l));
-                      }}
-                    />
-                  </div>
-                </div>
-                <div className="col-span-3">
-                  <Label className="text-xs">{idx === 0 ? `Qtd${itemSel ? ` (${itemSel.unidade})` : ''}` : ''}</Label>
-                  <input
-                    type="number"
-                    step="0.001"
-                    min="0"
-                    value={linha.quantidade || ''}
-                    onChange={(e) => setLinhasItens(linhasItens.map((l, i) => i === idx ? { ...l, quantidade: Number(e.target.value) } : l))}
-                    className="block w-full rounded-md border border-brand-200 bg-white px-3 py-2 font-mono text-sm"
-                  />
-                </div>
-                <div className="col-span-3">
-                  <Label className="text-xs">{idx === 0 ? 'Valor unitário (R$)' : ''}</Label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={linha.valor_unitario || ''}
-                    onChange={(e) => setLinhasItens(linhasItens.map((l, i) => i === idx ? { ...l, valor_unitario: Number(e.target.value) } : l))}
-                    className="block w-full rounded-md border border-brand-200 bg-white px-3 py-2 font-mono text-sm"
-                  />
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="col-span-1"
-                  onClick={() => setLinhasItens(linhasItens.filter((_, i) => i !== idx))}
-                  aria-label="Remover linha"
-                >
-                  ✕
-                </Button>
-              </div>
-              <div>
-                <Label className="text-xs text-brand-500">Como veio na NF (opcional)</Label>
-                <input
-                  type="text"
-                  value={linha.observacao ?? ''}
-                  onChange={(e) => setLinhasItens(linhasItens.map((l, i) => i === idx ? { ...l, observacao: e.target.value } : l))}
-                  placeholder='Ex.: "DISCO CORTE INOX TYROLIT 4.1/2" — preserva a descrição exata do fornecedor pra rastreabilidade'
-                  className="block w-full rounded-md border border-brand-100 bg-brand-50/40 px-3 py-1.5 text-xs"
-                />
-              </div>
-            </div>
-          );
-        })}
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => setLinhasItens([...linhasItens, { item_id: '', quantidade: 1, valor_unitario: 0 }])}
-        >
-          + Adicionar linha
-        </Button>
-        {itensList.length === 0 ? (
-          <p className="text-xs text-amber-700">
-            Nenhum item cadastrado ainda. Use o botão "+" ao lado do Select pra cadastrar rápido, ou cadastre completos em <Link href="/itens/novo" className="underline">/itens/novo</Link>.
-          </p>
-        ) : null}
       </div>
 
       <div className="space-y-2 rounded-[14px] border border-brand-100 bg-brand-50/30 p-4">
