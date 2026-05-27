@@ -63,7 +63,10 @@ function metaDoTipo(tipo: string) {
 }
 function addMeses(dataISO: string, meses: number): string {
   // Pure calendar arithmetic, evita drift de timezone (DST/offset).
-  const [y, m, d] = dataISO.split('-').map(Number);
+  const parts = dataISO.split('-');
+  const y = Number(parts[0]);
+  const m = Number(parts[1]);
+  const d = Number(parts[2]);
   const result = new Date(Date.UTC(y, m - 1 + meses, d));
   return result.toISOString().slice(0, 10);
 }
