@@ -22,12 +22,14 @@ import {
   Shield,
   UserCog,
   ArrowDownToLine,
+  TrendingUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const NAV: { href: string; label: string; icon: React.ComponentType<{ className?: string }>; group: string }[] = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard, group: 'visao' },
   { href: '/obras', label: 'Obras', icon: HardHat, group: 'visao' },
+  { href: '/apuracao', label: 'Apuração', icon: TrendingUp, group: 'visao' },
 
   { href: '/compras', label: 'Compras', icon: ShoppingCart, group: 'financeiro' },
   { href: '/fornecedores', label: 'Fornecedores', icon: Building, group: 'financeiro' },

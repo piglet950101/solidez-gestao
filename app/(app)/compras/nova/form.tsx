@@ -12,7 +12,7 @@ import { RateioForm } from '@/components/compras/rateio-form';
 import { ParcelasEditor } from '@/components/compras/parcelas-editor';
 import { FornecedorQuickAddDialog } from '@/components/fornecedores/quick-add-dialog';
 import { ItemQuickAddDialog } from '@/components/itens/quick-add-dialog';
-import { criarCompra, sugerirRateioAuto } from '@/actions/compras';
+import { criarCompra, sugerirRateioAuto, sugerirRateioAdministrativo } from '@/actions/compras';
 import { gerarParcelas, type RateioInputObra, type RateioModo } from '@/lib/rateio';
 import { FORMATOS_PAGAMENTO } from '@/lib/formato-pagamento';
 import { isSubtipoVeiculo } from '@/lib/categoria-subtipos';
@@ -27,6 +27,7 @@ interface CategoriaOption {
   id: string;
   nome: string;
   subtipo?: string | null;
+  tipo_despesa?: 'individual_obra' | 'administrativa' | 'estoque' | null;
 }
 
 interface VeiculoOption {
@@ -110,6 +111,26 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
 
   const categoriaSelecionada = categorias.find((c) => c.id === categoriaId);
   const categoriaExigeVeiculo = isSubtipoVeiculo(categoriaSelecionada?.subtipo ?? null);
+  // V2: tipo_despesa decide o fluxo (individual_obra | administrativa | estoque)
+  const tipoDespesa: 'individual_obra' | 'administrativa' | 'estoque' = categoriaSelecionada?.tipo_despesa ?? 'individual_obra';
+  const isEstoque = tipoDespesa === 'estoque';
+  const isAdministrativa = tipoDespesa === 'administrativa';
+  // Quando administrativa: auto-rateio entre obras ativas da empresa (busca no servidor 1x quando muda empresa/categoria)
+  React.useEffect(() => {
+    if (!isAdministrativa || !empresaId) return;
+    let cancelled = false;
+    sugerirRateioAdministrativo(empresaId).then((res) => {
+      if (cancelled) return;
+      if (res.error) { toast.error(res.error); return; }
+      setModoRateio('percentual');
+      setAlocacoes((res.alocacoes ?? []).map((a) => ({ obra_id: a.obra_id, percentual: a.percentual })));
+    });
+    return () => { cancelled = true; };
+  }, [isAdministrativa, empresaId]);
+  // Quando estoque: zera alocações (não usadas) — custo vai pelo estoque na saída
+  React.useEffect(() => {
+    if (isEstoque) setAlocacoes([]);
+  }, [isEstoque]);
 
   // Current allocations of the selected veículo (today). Used to auto-fill rateio.
   const alocsDoVeiculoAtual = React.useMemo(() => {
@@ -157,7 +178,8 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
     fd.set('empresa_id', empresaId);
     fd.set('valor_total', String(valorTotal));
     fd.set('rateio_modo', modoRateio);
-    fd.set('alocacoes_json', JSON.stringify(alocacoes));
+    fd.set('alocacoes_json', JSON.stringify(isEstoque ? [] : alocacoes));
+    fd.set('tipo_despesa', tipoDespesa);
     fd.set('parcelas_json', JSON.stringify(parcelas));
     fd.set('quem_pagou', quemPagou);
     if (quemPagou === 'socio') fd.set('pago_por_socio_id', pagoSocio);
@@ -173,8 +195,12 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
       toast.error('Categoria de veículo: selecione o veículo antes de salvar.');
       return;
     }
-    // Item lines (opcional)
+    // Item lines (opcional, salvo pra estoque que é obrigatório)
     fd.set('itens_json', JSON.stringify(linhasItens));
+    if (isEstoque && linhasItens.length === 0) {
+      toast.error('Compra de estoque: detalhe pelo menos uma linha de item (qtd × valor unitário) no bloco acima.');
+      return;
+    }
     if (linhasItens.length > 0) {
       const soma = linhasItens.reduce((s, l) => s + (Number(l.quantidade) || 0) * (Number(l.valor_unitario) || 0), 0);
       if (Math.abs(soma - valorTotal) > 0.05) {
@@ -247,19 +273,12 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
         Detalhe linha por linha quando a NF tem múltiplos itens. Ao salvar, cada item entra no estoque automaticamente com seu custo unitário.
         Se preferir uma compra sem detalhamento (ex.: serviço), deixe em branco.
       </p>
-      {(() => {
-        const cat = categorias.find((c) => c.id === categoriaId);
-        const ehMaterialOuEpi = cat && (cat.nome === 'EPI' || cat.nome === 'Material' || cat.subtipo === null && /EPI|material/i.test(cat.nome));
-        if (ehMaterialOuEpi && linhasItens.length === 0 && valorTotal > 0) {
-          return (
-            <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              <strong>Categoria {cat.nome}:</strong> recomendado detalhar a compra por item (qtd × valor unitário) pra alimentar o estoque automaticamente.
-              Use "+ Adicionar linha" abaixo. Sem detalhamento, o estoque não atualiza.
-            </p>
-          );
-        }
-        return null;
-      })()}
+      {isEstoque && linhasItens.length === 0 ? (
+        <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <strong>Categoria {categoriaSelecionada?.nome} (estoque):</strong> detalhar os itens é obrigatório — o custo flui pra obra
+          quando o item sair do estoque. Use "+ Adicionar linha" abaixo.
+        </p>
+      ) : null}
       {linhasItens.map((linha, idx) => {
         const itemSel = itensList.find((i) => i.id === linha.item_id);
         return (
@@ -579,6 +598,34 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
         ) : null}
       </div>
 
+      {isEstoque ? (
+        <div className="rounded-[14px] border border-emerald-200 bg-emerald-50/60 p-4">
+          <h3 className="text-sm font-semibold uppercase tracking-widest text-emerald-800">Compra de estoque</h3>
+          <p className="mt-1 text-xs text-emerald-900">
+            Categoria <strong>{categoriaSelecionada?.nome}</strong> vai pro estoque — sem rateio agora. O custo será atribuído
+            à obra quando o item sair do estoque (saída/EPI). <strong>Detalhe os itens no bloco acima</strong> (Itens da nota) —
+            é obrigatório pra alimentar o estoque.
+          </p>
+        </div>
+      ) : isAdministrativa ? (
+        <div className="space-y-3 rounded-[14px] border border-amber-200 bg-amber-50/40 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold uppercase tracking-widest text-amber-800">Despesa administrativa — rateio automático</h3>
+          </div>
+          <p className="text-xs text-amber-900">
+            Categoria <strong>{categoriaSelecionada?.nome}</strong> é administrativa (contador, aluguel, software, etc.) — o custo é
+            rateado igualmente entre as obras ativas. Você pode ajustar os percentuais abaixo se precisar de outra distribuição.
+          </p>
+          <RateioForm
+            obras={obrasDaEmpresa}
+            valorTotal={valorTotal}
+            modo={modoRateio}
+            onModoChange={setModoRateio}
+            alocacoes={alocacoes}
+            onChange={setAlocacoes}
+          />
+        </div>
+      ) : (
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-semibold uppercase tracking-widest text-brand-600">Rateio entre obras</h3>
@@ -642,6 +689,7 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
           onChange={setAlocacoes}
         />
       </div>
+      )}
 
       <div className="space-y-2">
         <h3 className="text-sm font-semibold uppercase tracking-widest text-brand-600">Parcelamento</h3>

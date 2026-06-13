@@ -57,6 +57,34 @@ export async function criarObra(formData: FormData) {
   return { id: data.id };
 }
 
+/** V2: atualiza os sócios de uma obra. Substitui o conjunto inteiro (upsert atomic). */
+export async function atualizarSociosObra(obra_id: string, formData: FormData) {
+  let socios: { socio_id: string; percentual: number }[];
+  try {
+    socios = SociosSchema.parse(JSON.parse(String(formData.get('socios_json') ?? '[]')));
+  } catch {
+    return { error: 'Sócios inválidos.' };
+  }
+  if (socios.length > 0) {
+    const total = socios.reduce((s, c) => s + c.percentual, 0);
+    if (Math.abs(total - 100) > 0.01) return { error: `Sócios devem somar 100% (atual: ${total.toFixed(2)}%)` };
+    const ids = new Set(socios.map((s) => s.socio_id));
+    if (ids.size !== socios.length) return { error: 'Sócio repetido.' };
+  }
+  const supabase = await createClient();
+  // Substituição atômica: remove os atuais, insere os novos
+  const { error: delErr } = await supabase.from('obra_socios').delete().eq('obra_id', obra_id);
+  if (delErr) return { error: delErr.message };
+  if (socios.length > 0) {
+    const rows = socios.map((s) => ({ obra_id, socio_id: s.socio_id, percentual: s.percentual }));
+    const { error: insErr } = await supabase.from('obra_socios').insert(rows);
+    if (insErr) return { error: insErr.message };
+  }
+  revalidatePath(`/obras/${obra_id}`);
+  revalidatePath('/apuracao');
+  return { ok: true };
+}
+
 export async function encerrarObra(id: string, dataFim: string) {
   const supabase = await createClient();
   const { error } = await supabase

@@ -53,6 +53,7 @@ const MENU_GROUPS: { group: string; items: MobileNavItem[] }[] = [
     items: [
       { href: '/', label: 'Dashboard', icon: LayoutDashboard },
       { href: '/obras', label: 'Obras', icon: HardHat },
+      { href: '/apuracao', label: 'Apuração', icon: FileBarChart },
     ],
   },
   {

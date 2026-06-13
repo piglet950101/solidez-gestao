@@ -28,6 +28,11 @@ const NovaCompraSchema = z.object({
   alocacoes_json: z.string(),
   parcelas_json: z.string(),
   itens_json: z.string().optional(),
+  // V2: tipo da despesa (espelha categorias.tipo_despesa, mas pode vir explícito do form)
+  tipo_despesa: z.preprocess(
+    (v) => (typeof v === 'string' && v.trim() === '' ? null : v),
+    z.enum(['individual_obra', 'administrativa', 'estoque']).nullable().optional(),
+  ),
 });
 
 const CompraItensSchema = z.array(
@@ -73,7 +78,12 @@ export async function criarCompra(formData: FormData): Promise<{ id?: string; er
     return { error: 'Estrutura de alocações ou parcelas inválida.' };
   }
 
-  if (alocacoesInput.length === 0) return { error: 'Adicione pelo menos uma obra para o rateio.' };
+  // V2: compras de estoque podem não ter alocações — custo flui via saída do estoque.
+  // Pra essas, exige que tenham linhas de item (senão o custo desaparece).
+  const tipoDespesa = parsed.data.tipo_despesa ?? null;
+  if (tipoDespesa !== 'estoque' && alocacoesInput.length === 0) {
+    return { error: 'Adicione pelo menos uma obra para o rateio.' };
+  }
   if (parcelasInput.length === 0) return { error: 'Adicione pelo menos uma parcela.' };
 
   // Optional: detalhamento por linhas de item. Quando vier, soma deve bater
@@ -92,16 +102,24 @@ export async function criarCompra(formData: FormData): Promise<{ id?: string; er
       }
     }
   }
-
-  let alocacoesCalc;
-  try {
-    alocacoesCalc = calcularRateio(rest.rateio_modo as RateioModo, rest.valor_total, alocacoesInput);
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Erro no rateio.' };
+  // V2: compras de estoque PRECISAM ter linhas (senão custo desaparece)
+  if (tipoDespesa === 'estoque' && itensInput.length === 0) {
+    return { error: 'Compra de estoque precisa de pelo menos uma linha de item (qtd × valor unitário).' };
   }
-  const totalAlocado = alocacoesCalc.reduce((s, a) => s + a.valor_alocado, 0);
-  if (Math.abs(totalAlocado - rest.valor_total) > 0.05) {
-    return { error: `Soma do rateio (R$ ${totalAlocado.toFixed(2)}) difere do total (R$ ${rest.valor_total.toFixed(2)}).` };
+
+  let alocacoesCalc: Awaited<ReturnType<typeof calcularRateio>> | { obra_id: string; valor_alocado: number; percentual_alocado: number | null; qtd_alocada: number | null }[];
+  if (tipoDespesa === 'estoque' && alocacoesInput.length === 0) {
+    alocacoesCalc = [];
+  } else {
+    try {
+      alocacoesCalc = calcularRateio(rest.rateio_modo as RateioModo, rest.valor_total, alocacoesInput);
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : 'Erro no rateio.' };
+    }
+    const totalAlocado = alocacoesCalc.reduce((s, a) => s + a.valor_alocado, 0);
+    if (Math.abs(totalAlocado - rest.valor_total) > 0.05) {
+      return { error: `Soma do rateio (R$ ${totalAlocado.toFixed(2)}) difere do total (R$ ${rest.valor_total.toFixed(2)}).` };
+    }
   }
   const totalParcelas = parcelasInput.reduce((s, p) => s + p.valor, 0);
   if (Math.abs(totalParcelas - rest.valor_total) > 0.05) {
@@ -133,6 +151,7 @@ export async function criarCompra(formData: FormData): Promise<{ id?: string; er
     ...(rest.funcionario_id && rest.fase_funcionario
       ? { p_funcionario_id: rest.funcionario_id, p_fase_funcionario: rest.fase_funcionario }
       : {}),
+    ...(tipoDespesa ? { p_tipo_despesa: tipoDespesa } : {}),
   };
   const { data, error } = await supabase.rpc('fn_criar_compra', rpcParams);
 
@@ -295,6 +314,23 @@ export async function sugerirRateioAuto(
       return { obra_id: o.id, percentual: Number(pct.toFixed(4)) };
     }),
   };
+}
+
+/**
+ * V2: Sugere rateio administrativo proporcional entre obras ativas da empresa
+ * (ou de todas as empreiteiras se a empresa for a matriz). Usado pelo form de
+ * compra quando a categoria for marcada como "administrativa".
+ */
+export async function sugerirRateioAdministrativo(empresa_id: string): Promise<{
+  alocacoes?: { obra_id: string; percentual: number }[];
+  error?: string;
+}> {
+  const supabase = await createClient();
+  const { data, error } = await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>)('fn_sugerir_rateio_administrativo', { p_empresa_id: empresa_id });
+  if (error) return { error: error.message };
+  const rows = (data ?? []) as { obra_id: string; percentual: number }[];
+  if (rows.length === 0) return { error: 'Sem obras ativas pra rateio administrativo.' };
+  return { alocacoes: rows.map((r) => ({ obra_id: r.obra_id, percentual: Number(r.percentual) })) };
 }
 
 export async function excluirCompra(id: string) {

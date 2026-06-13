@@ -26,7 +26,7 @@ export default async function NovaCompraPage() {
     supabase.from('fornecedores').select('id, nome').eq('ativo', true).order('nome'),
     // Includes `subtipo` (added in 20260515000001 migration) so the form
     // knows which categories are vehicle-related and should require a veículo.
-    supabase.from('categorias').select('id, nome, tipo, subtipo').eq('tipo', 'despesa').eq('ativo', true).order('ordem'),
+    supabase.from('categorias').select('id, nome, tipo, subtipo, tipo_despesa' as 'id, nome, tipo, subtipo').eq('tipo', 'despesa').eq('ativo', true).order('ordem'),
     supabase.from('socios').select('id, nome').eq('ativo', true).order('nome'),
     supabase.from('veiculos').select('id, placa, modelo').eq('status', 'ativo').order('placa'),
     // Active allocations only — periodo_fim null OR >= today.

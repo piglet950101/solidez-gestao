@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { LucroDistribuivelCard } from '@/components/obras/lucro-distribuivel-card';
 import { SaldoInicialCard } from '@/components/obras/saldo-inicial-card';
 import { AntecipacaoConciliarDialog } from '@/components/obras/antecipacao-conciliar-dialog';
+import { SociosEditorCard } from '@/components/obras/socios-editor-card';
 import { Table, THead, TBody, TR, TH, TD, TableEmpty } from '@/components/ui/table';
 import { formatBRL, formatDate, formatMonthRef } from '@/lib/format';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,7 @@ export default async function ObraDetailPage({
     { data: margem },
     { data: parcelasPendentes },
     { data: antecipacoes },
+    { data: todosSocios },
   ] = await Promise.all([
     supabase
       .from('medicoes')
@@ -55,11 +57,23 @@ export default async function ObraDetailPage({
       .select('*')
       .eq('obra_id', id)
       .order('data_recebimento', { ascending: false }),
+    supabase.from('socios').select('id, nome').eq('ativo', true).order('nome'),
   ]);
 
   const lucro = lucroData?.[0];
   const empresa = (obra as unknown as { empresas: { nome: string; cnpj: string } }).empresas;
-  const socios = (obra as unknown as { obra_socios: { percentual: number; socios: { nome: string } }[] }).obra_socios;
+  type SocioObraRow = { socio_id?: string; percentual: number; socios: { id?: string; nome: string } | null };
+  const sociosRaw = ((obra as unknown as { obra_socios: SocioObraRow[] }).obra_socios) ?? [];
+  // Para o editor, precisa do socio_id — recarrega via tabela direta
+  const { data: sociosObraFull } = await supabase
+    .from('obra_socios')
+    .select('socio_id, percentual, socios(nome)')
+    .eq('obra_id', id);
+  const sociosEdit = (sociosObraFull ?? []).map((r) => {
+    const s = (r as unknown as { socio_id: string; percentual: number; socios: { nome: string } | null });
+    return { socio_id: s.socio_id, nome: s.socios?.nome ?? '?', percentual: Number(s.percentual) };
+  });
+  void sociosRaw;
 
   return (
     <div className="space-y-6">
@@ -248,23 +262,21 @@ export default async function ObraDetailPage({
             />
           ) : null}
 
+          <SociosEditorCard
+            obraId={obra.id}
+            socios={sociosEdit}
+            todosSocios={(todosSocios ?? []).map((s) => ({ id: s.id, nome: s.nome }))}
+          />
           <Card>
             <CardHeader>
-              <CardTitle>Sócios e percentuais</CardTitle>
+              <CardTitle>Apuração rápida</CardTitle>
+              <span className="text-xs text-brand-500">P&L completo em <Link className="underline" href="/apuracao">/apuracao</Link></span>
             </CardHeader>
             <CardContent>
-              {socios?.length ? (
-                <ul className="space-y-2 text-sm">
-                  {socios.map((s, i) => (
-                    <li key={i} className="flex items-center justify-between gap-2 rounded-[10px] bg-brand-50 px-3 py-2">
-                      <span className="font-medium text-brand-800">{s.socios?.nome}</span>
-                      <span className="font-mono text-base font-bold text-brand-900">{s.percentual}%</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-brand-500">Sem sócios cadastrados.</p>
-              )}
+              <p className="text-xs text-brand-500">
+                A nova página <Link className="underline" href="/apuracao">/apuracao</Link> mostra receita, despesas (individuais + administrativas + estoque + folha + impostos),
+                lucro líquido por obra e a distribuição automática aos sócios conforme os percentuais acima.
+              </p>
             </CardContent>
           </Card>
 
