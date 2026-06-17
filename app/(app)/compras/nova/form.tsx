@@ -21,6 +21,8 @@ interface Option {
   id: string;
   nome: string;
   empresa_id?: string;
+  tipo?: 'matriz' | 'empreiteira' | null;
+  matriz_id?: string | null;
 }
 
 interface CategoriaOption {
@@ -107,7 +109,19 @@ export function NovaCompraForm({ empresas, obras, fornecedores, categorias, soci
   const userPickedFornRef = React.useRef<boolean>(false);
   const [pending, startTransition] = React.useTransition();
 
-  const obrasDaEmpresa = obras.filter((o) => o.empresa_id === empresaId);
+  // V2: quando a empresa for matriz (SLD), as obras candidatas são as das empreiteiras filhas
+  // (SLD não tem obras diretamente — recebe da construtora e paga as empreiteiras).
+  const empresaSelecionada = empresas.find((e) => e.id === empresaId);
+  const empresasFilhasIds = React.useMemo(
+    () => empresas.filter((e) => e.matriz_id === empresaId).map((e) => e.id),
+    [empresas, empresaId],
+  );
+  const obrasDaEmpresa = React.useMemo(() => {
+    if (empresaSelecionada?.tipo === 'matriz') {
+      return obras.filter((o) => empresasFilhasIds.includes(o.empresa_id ?? ''));
+    }
+    return obras.filter((o) => o.empresa_id === empresaId);
+  }, [empresaSelecionada, empresasFilhasIds, obras, empresaId]);
 
   const categoriaSelecionada = categorias.find((c) => c.id === categoriaId);
   const categoriaExigeVeiculo = isSubtipoVeiculo(categoriaSelecionada?.subtipo ?? null);

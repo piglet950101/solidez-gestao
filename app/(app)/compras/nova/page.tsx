@@ -21,7 +21,7 @@ export default async function NovaCompraPage() {
     { data: funcionarios },
     { data: itens },
   ] = await Promise.all([
-    supabase.from('empresas').select('id, nome').eq('ativo', true).order('nome'),
+    supabase.from('empresas').select('id, nome, tipo, matriz_id' as 'id, nome').eq('ativo', true).order('nome'),
     supabase.from('obras').select('id, nome, empresa_id').eq('status', 'ativa').order('nome'),
     supabase.from('fornecedores').select('id, nome').eq('ativo', true).order('nome'),
     // Includes `subtipo` (added in 20260515000001 migration) so the form
