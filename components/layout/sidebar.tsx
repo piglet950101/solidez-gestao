@@ -32,6 +32,7 @@ const NAV: { href: string; label: string; icon: React.ComponentType<{ className?
   { href: '/apuracao', label: 'Apuração', icon: TrendingUp, group: 'visao' },
 
   { href: '/compras', label: 'Compras', icon: ShoppingCart, group: 'financeiro' },
+  { href: '/contas-a-pagar', label: 'Contas a pagar', icon: Receipt, group: 'financeiro' },
   { href: '/fornecedores', label: 'Fornecedores', icon: Building, group: 'financeiro' },
   { href: '/itens', label: 'Itens / Estoque', icon: Boxes, group: 'financeiro' },
   { href: '/requisicoes', label: 'Requisições', icon: ClipboardList, group: 'financeiro' },

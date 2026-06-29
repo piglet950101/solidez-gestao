@@ -60,6 +60,7 @@ const MENU_GROUPS: { group: string; items: MobileNavItem[] }[] = [
     group: 'Financeiro',
     items: [
       { href: '/compras', label: 'Compras', icon: ShoppingCart },
+      { href: '/contas-a-pagar', label: 'Contas a pagar', icon: Receipt },
       { href: '/fornecedores', label: 'Fornecedores', icon: Building },
       { href: '/custos-fixos', label: 'Custos Fixos', icon: Wallet },
       { href: '/medicoes', label: 'Medições', icon: FileBarChart },

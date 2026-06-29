@@ -1,4 +1,5 @@
 export const FORMATOS_PAGAMENTO = [
+  { value: 'pix', label: 'PIX' },
   { value: 'a_vista', label: 'À vista' },
   { value: 'debito', label: 'Débito' },
   { value: 'credito', label: 'Crédito' },
