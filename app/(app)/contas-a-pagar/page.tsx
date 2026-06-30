@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, THead, TBody, TR, TH, TD, TableEmpty } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { formatBRL, formatDate } from '@/lib/format';
+import { RegistrarPagamentoDialog } from '@/components/compras/registrar-pagamento-dialog';
+import { decodePagamento, formaPagamentoLabel } from '@/lib/parcela-pagamento';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +17,7 @@ interface ParcelaRow {
   valor: number;
   status: 'pendente' | 'pago' | 'atrasado' | 'cancelado';
   data_pagamento: string | null;
+  observacoes: string | null;
   compras: {
     id: string;
     descricao: string;
@@ -50,10 +53,14 @@ export default async function ContasAPagarPage({
 
   const supabase = await createClient();
 
+  // 'atrasado' (vencida) é computado de forma virtual: status='pendente' AND data_vencimento < hoje.
+  // O enum no DB tem 'atrasado' mas não há trigger atualizando, então tratamos no app.
+  const hoje = new Date().toISOString().slice(0, 10);
+
   let q = supabase
     .from('parcelas')
     .select(`
-      id, num_parcela, data_vencimento, valor, status, data_pagamento,
+      id, num_parcela, data_vencimento, valor, status, data_pagamento, observacoes,
       compras!inner(
         id, descricao, data_compra, empresa_id,
         empresas(nome, cnpj),
@@ -65,6 +72,9 @@ export default async function ContasAPagarPage({
 
   if (statusFilter === 'abertas') {
     q = q.in('status', ['pendente', 'atrasado']);
+  } else if (statusFilter === 'vencida') {
+    // Vencidas = pendentes com vencimento já passado
+    q = q.eq('status', 'pendente').lt('data_vencimento', hoje);
   } else if (statusFilter !== 'todas') {
     q = q.eq('status', statusFilter as 'pendente' | 'pago' | 'atrasado' | 'cancelado');
   }
@@ -79,13 +89,20 @@ export default async function ContasAPagarPage({
 
   const parcelas = (parcelasRaw ?? []) as unknown as ParcelaRow[];
 
-  // Totais por status
+  // Status efetivo: parcela 'pendente' com data_vencimento < hoje é tratada como 'atrasado' (vencida)
+  function statusEfetivo(p: ParcelaRow): ParcelaRow['status'] {
+    if (p.status === 'pendente' && p.data_vencimento < hoje) return 'atrasado';
+    return p.status;
+  }
+
+  // Totais por status (usando status efetivo)
   const totais = parcelas.reduce(
     (acc, p) => {
+      const s = statusEfetivo(p);
       acc.total += Number(p.valor);
-      if (p.status === 'pendente') acc.pendente += Number(p.valor);
-      else if (p.status === 'atrasado') acc.atrasado += Number(p.valor);
-      else if (p.status === 'pago') acc.pago += Number(p.valor);
+      if (s === 'pendente') acc.pendente += Number(p.valor);
+      else if (s === 'atrasado') acc.atrasado += Number(p.valor);
+      else if (s === 'pago') acc.pago += Number(p.valor);
       return acc;
     },
     { total: 0, pendente: 0, atrasado: 0, pago: 0 },
@@ -122,7 +139,7 @@ export default async function ContasAPagarPage({
               >
                 <option value="abertas">A pagar (pendentes + vencidas)</option>
                 <option value="pendente">Apenas pendentes</option>
-                <option value="atrasado">Apenas vencidas</option>
+                <option value="vencida">Apenas vencidas</option>
                 <option value="pago">Apenas pagas</option>
                 <option value="todas">Todas</option>
               </select>
@@ -167,6 +184,7 @@ export default async function ContasAPagarPage({
                   <TH>Obra(s)</TH>
                   <TH className="text-right">Valor</TH>
                   <TH>Status</TH>
+                  <TH>Ação</TH>
                 </TR>
               </THead>
               <TBody>
@@ -177,8 +195,9 @@ export default async function ContasAPagarPage({
                     const c = p.compras;
                     const obras = c?.compra_alocacoes ?? [];
                     const valorTotal = Number(p.valor);
-                    // Se tem rateio, mostra cada obra com a fatia proporcional dessa parcela
                     const valorCompra = obras.reduce((s, a) => s + Number(a.valor_alocado), 0);
+                    const sEfetivo = statusEfetivo(p);
+                    const pagMeta = decodePagamento(p.observacoes);
                     return (
                       <TR key={p.id}>
                         <TD>
@@ -219,9 +238,30 @@ export default async function ContasAPagarPage({
                         </TD>
                         <TD className="text-right font-mono font-semibold">{formatBRL(valorTotal)}</TD>
                         <TD>
-                          <Badge tone={STATUS_TONE[p.status] ?? 'outline'}>{STATUS_LABEL[p.status] ?? p.status}</Badge>
+                          <Badge tone={STATUS_TONE[sEfetivo] ?? 'outline'}>{STATUS_LABEL[sEfetivo] ?? sEfetivo}</Badge>
                           {p.data_pagamento ? (
-                            <div className="mt-1 text-[10px] text-brand-400">pago em {formatDate(p.data_pagamento)}</div>
+                            <div className="mt-1 text-[10px] text-brand-500">
+                              pago em {formatDate(p.data_pagamento)}
+                              {pagMeta?.forma ? ` · ${formaPagamentoLabel(pagMeta.forma)}` : ''}
+                            </div>
+                          ) : null}
+                          {sEfetivo === 'atrasado' && p.status !== 'pago' ? (
+                            <div className="mt-0.5 text-[10px] font-semibold text-red-700">
+                              {Math.floor((Date.now() - new Date(p.data_vencimento).getTime()) / 86400000)}d atrasada
+                            </div>
+                          ) : null}
+                        </TD>
+                        <TD>
+                          {sEfetivo !== 'cancelado' ? (
+                            <RegistrarPagamentoDialog
+                              parcelaId={p.id}
+                              descricao={c?.descricao ?? '—'}
+                              valor={valorTotal}
+                              dataVencimento={p.data_vencimento}
+                              status={p.status}
+                              dataPagamento={p.data_pagamento}
+                              pagamentoMeta={pagMeta}
+                            />
                           ) : null}
                         </TD>
                       </TR>

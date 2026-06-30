@@ -342,6 +342,57 @@ export async function excluirCompra(id: string) {
   return {};
 }
 
+/** Pagamento completo de uma parcela: data, forma, conta, observações e comprovante.
+ *  Metadados extras vão estruturados como JSON na coluna `observacoes` (parcelas
+ *  ainda não tem colunas próprias pra forma/conta/comprovante — feature flag
+ *  pra migrar quando tivermos DDL access). UI decodifica via lib/parcela-pagamento. */
+const RegistrarPagamentoSchema = z.object({
+  data_pagamento: z.string().min(8),
+  forma_pagamento: optionalString,
+  pago_via_conta: optionalString,
+  observacoes: optionalString,
+  comprovante_path: optionalString,
+});
+
+export async function registrarPagamentoParcela(parcelaId: string, formData: FormData) {
+  const parsed = RegistrarPagamentoSchema.safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Dados inválidos.' };
+  const { data_pagamento, forma_pagamento, pago_via_conta, observacoes, comprovante_path } = parsed.data;
+  const meta = {
+    forma: forma_pagamento ?? null,
+    conta: pago_via_conta ?? null,
+    comprovante: comprovante_path ?? null,
+    obs: observacoes ?? null,
+  };
+  const observacoesJson = JSON.stringify(meta);
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('parcelas')
+    .update({ status: 'pago', data_pagamento, observacoes: observacoesJson } as never)
+    .eq('id', parcelaId);
+  if (error) return { error: error.message };
+  revalidatePath('/contas-a-pagar');
+  revalidatePath('/compras');
+  revalidatePath('/');
+  return { ok: true };
+}
+
+/** Reverte um pagamento — devolve a parcela pra pendente. Útil quando o usuário
+ *  registrou pagamento errado. */
+export async function reverterPagamentoParcela(parcelaId: string) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('parcelas')
+    .update({ status: 'pendente', data_pagamento: null } as never)
+    .eq('id', parcelaId);
+  if (error) return { error: error.message };
+  revalidatePath('/contas-a-pagar');
+  revalidatePath('/compras');
+  revalidatePath('/');
+  return { ok: true };
+}
+
+/** Legacy: mantém compatibilidade com locais que chamavam pagarParcela só com data. */
 export async function pagarParcela(parcelaId: string, dataPagamento: string) {
   const supabase = await createClient();
   const { error } = await supabase
