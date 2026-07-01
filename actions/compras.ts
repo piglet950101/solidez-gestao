@@ -343,9 +343,8 @@ export async function excluirCompra(id: string) {
 }
 
 /** Pagamento completo de uma parcela: data, forma, conta, observações e comprovante.
- *  Metadados extras vão estruturados como JSON na coluna `observacoes` (parcelas
- *  ainda não tem colunas próprias pra forma/conta/comprovante — feature flag
- *  pra migrar quando tivermos DDL access). UI decodifica via lib/parcela-pagamento. */
+ *  Cada campo tem coluna própria em parcelas (forma_pagamento, pago_via_conta,
+ *  comprovante_url); observacoes fica só com o texto livre do usuário. */
 const RegistrarPagamentoSchema = z.object({
   data_pagamento: z.string().min(8),
   forma_pagamento: optionalString,
@@ -358,17 +357,17 @@ export async function registrarPagamentoParcela(parcelaId: string, formData: For
   const parsed = RegistrarPagamentoSchema.safeParse(Object.fromEntries(formData.entries()));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Dados inválidos.' };
   const { data_pagamento, forma_pagamento, pago_via_conta, observacoes, comprovante_path } = parsed.data;
-  const meta = {
-    forma: forma_pagamento ?? null,
-    conta: pago_via_conta ?? null,
-    comprovante: comprovante_path ?? null,
-    obs: observacoes ?? null,
-  };
-  const observacoesJson = JSON.stringify(meta);
   const supabase = await createClient();
   const { error } = await supabase
     .from('parcelas')
-    .update({ status: 'pago', data_pagamento, observacoes: observacoesJson } as never)
+    .update({
+      status: 'pago',
+      data_pagamento,
+      forma_pagamento: forma_pagamento ?? null,
+      pago_via_conta: pago_via_conta ?? null,
+      comprovante_url: comprovante_path ?? null,
+      observacoes: observacoes ?? null,
+    } as never)
     .eq('id', parcelaId);
   if (error) return { error: error.message };
   revalidatePath('/contas-a-pagar');
@@ -377,13 +376,18 @@ export async function registrarPagamentoParcela(parcelaId: string, formData: For
   return { ok: true };
 }
 
-/** Reverte um pagamento — devolve a parcela pra pendente. Útil quando o usuário
- *  registrou pagamento errado. */
+/** Reverte um pagamento — devolve a parcela pra pendente e limpa os metadados. */
 export async function reverterPagamentoParcela(parcelaId: string) {
   const supabase = await createClient();
   const { error } = await supabase
     .from('parcelas')
-    .update({ status: 'pendente', data_pagamento: null } as never)
+    .update({
+      status: 'pendente',
+      data_pagamento: null,
+      forma_pagamento: null,
+      pago_via_conta: null,
+      comprovante_url: null,
+    } as never)
     .eq('id', parcelaId);
   if (error) return { error: error.message };
   revalidatePath('/contas-a-pagar');

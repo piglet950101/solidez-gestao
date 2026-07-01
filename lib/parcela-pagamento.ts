@@ -1,32 +1,6 @@
-// Helper pra encode/decode metadados de pagamento que vivem dentro de
-// parcelas.observacoes como JSON, até que as colunas próprias sejam criadas.
-
-export interface PagamentoMeta {
-  forma: string | null;
-  conta: string | null;
-  comprovante: string | null;
-  obs: string | null;
-}
-
-export function decodePagamento(observacoes: string | null | undefined): PagamentoMeta | null {
-  if (!observacoes) return null;
-  // Heurística: se começa com { e tem JSON válido com pelo menos uma das chaves esperadas
-  const t = observacoes.trim();
-  if (!t.startsWith('{')) {
-    return { forma: null, conta: null, comprovante: null, obs: t };
-  }
-  try {
-    const parsed = JSON.parse(t);
-    return {
-      forma: typeof parsed.forma === 'string' ? parsed.forma : null,
-      conta: typeof parsed.conta === 'string' ? parsed.conta : null,
-      comprovante: typeof parsed.comprovante === 'string' ? parsed.comprovante : null,
-      obs: typeof parsed.obs === 'string' ? parsed.obs : null,
-    };
-  } catch {
-    return { forma: null, conta: null, comprovante: null, obs: t };
-  }
-}
+// Metadados de pagamento agora vivem em colunas próprias em parcelas
+// (forma_pagamento, pago_via_conta, comprovante_url). Este módulo só expõe
+// os labels de forma de pagamento e a lista pra dropdowns.
 
 const FORMA_LABELS: Record<string, string> = {
   pix: 'PIX',

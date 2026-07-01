@@ -18,7 +18,7 @@ import { Input, Textarea } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { registrarPagamentoParcela, reverterPagamentoParcela } from '@/actions/compras';
 import { createClient } from '@/lib/supabase/client';
-import { FORMAS_PAGAMENTO_PARCELA, type PagamentoMeta, formaPagamentoLabel } from '@/lib/parcela-pagamento';
+import { FORMAS_PAGAMENTO_PARCELA, formaPagamentoLabel } from '@/lib/parcela-pagamento';
 import { formatBRL, formatDate } from '@/lib/format';
 
 interface Props {
@@ -28,7 +28,10 @@ interface Props {
   dataVencimento: string;
   status: 'pendente' | 'pago' | 'atrasado' | 'cancelado';
   dataPagamento: string | null;
-  pagamentoMeta: PagamentoMeta | null;
+  formaPagamento: string | null;
+  pagoViaConta: string | null;
+  comprovanteUrl: string | null;
+  observacoes: string | null;
 }
 
 export function RegistrarPagamentoDialog({
@@ -38,7 +41,10 @@ export function RegistrarPagamentoDialog({
   dataVencimento,
   status,
   dataPagamento,
-  pagamentoMeta,
+  formaPagamento,
+  pagoViaConta,
+  comprovanteUrl,
+  observacoes,
 }: Props) {
   const router = useRouter();
   const supabase = React.useMemo(() => createClient(), []);
@@ -96,8 +102,8 @@ export function RegistrarPagamentoDialog({
   }
 
   async function baixarComprovante() {
-    if (!pagamentoMeta?.comprovante) return;
-    const { data, error } = await supabase.storage.from('funcionario-docs').createSignedUrl(pagamentoMeta.comprovante, 60);
+    if (!comprovanteUrl) return;
+    const { data, error } = await supabase.storage.from('funcionario-docs').createSignedUrl(comprovanteUrl, 60);
     if (error || !data?.signedUrl) { toast.error('Não foi possível gerar link.'); return; }
     window.open(data.signedUrl, '_blank');
   }
@@ -125,10 +131,10 @@ export function RegistrarPagamentoDialog({
         {isPago ? (
           <div className="space-y-3 text-sm">
             <Detail label="Data do pagamento" value={dataPagamento ? formatDate(dataPagamento) : '—'} />
-            <Detail label="Forma de pagamento" value={formaPagamentoLabel(pagamentoMeta?.forma ?? null) ?? '—'} />
-            <Detail label="Conta / origem" value={pagamentoMeta?.conta ?? '—'} />
-            <Detail label="Observações" value={pagamentoMeta?.obs ?? '—'} />
-            {pagamentoMeta?.comprovante ? (
+            <Detail label="Forma de pagamento" value={formaPagamentoLabel(formaPagamento) ?? '—'} />
+            <Detail label="Conta / origem" value={pagoViaConta ?? '—'} />
+            <Detail label="Observações" value={observacoes ?? '—'} />
+            {comprovanteUrl ? (
               <div>
                 <Label className="text-xs">Comprovante</Label>
                 <div>

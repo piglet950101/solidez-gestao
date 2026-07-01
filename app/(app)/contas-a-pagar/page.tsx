@@ -6,7 +6,7 @@ import { Table, THead, TBody, TR, TH, TD, TableEmpty } from '@/components/ui/tab
 import { Badge } from '@/components/ui/badge';
 import { formatBRL, formatDate } from '@/lib/format';
 import { RegistrarPagamentoDialog } from '@/components/compras/registrar-pagamento-dialog';
-import { decodePagamento, formaPagamentoLabel } from '@/lib/parcela-pagamento';
+import { formaPagamentoLabel } from '@/lib/parcela-pagamento';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +18,9 @@ interface ParcelaRow {
   status: 'pendente' | 'pago' | 'atrasado' | 'cancelado';
   data_pagamento: string | null;
   observacoes: string | null;
+  forma_pagamento: string | null;
+  pago_via_conta: string | null;
+  comprovante_url: string | null;
   compras: {
     id: string;
     descricao: string;
@@ -61,6 +64,7 @@ export default async function ContasAPagarPage({
     .from('parcelas')
     .select(`
       id, num_parcela, data_vencimento, valor, status, data_pagamento, observacoes,
+      forma_pagamento, pago_via_conta, comprovante_url,
       compras!inner(
         id, descricao, data_compra, empresa_id,
         empresas(nome, cnpj),
@@ -197,7 +201,6 @@ export default async function ContasAPagarPage({
                     const valorTotal = Number(p.valor);
                     const valorCompra = obras.reduce((s, a) => s + Number(a.valor_alocado), 0);
                     const sEfetivo = statusEfetivo(p);
-                    const pagMeta = decodePagamento(p.observacoes);
                     return (
                       <TR key={p.id}>
                         <TD>
@@ -242,7 +245,7 @@ export default async function ContasAPagarPage({
                           {p.data_pagamento ? (
                             <div className="mt-1 text-[10px] text-brand-500">
                               pago em {formatDate(p.data_pagamento)}
-                              {pagMeta?.forma ? ` · ${formaPagamentoLabel(pagMeta.forma)}` : ''}
+                              {p.forma_pagamento ? ` · ${formaPagamentoLabel(p.forma_pagamento)}` : ''}
                             </div>
                           ) : null}
                           {sEfetivo === 'atrasado' && p.status !== 'pago' ? (
@@ -260,7 +263,10 @@ export default async function ContasAPagarPage({
                               dataVencimento={p.data_vencimento}
                               status={p.status}
                               dataPagamento={p.data_pagamento}
-                              pagamentoMeta={pagMeta}
+                              formaPagamento={p.forma_pagamento}
+                              pagoViaConta={p.pago_via_conta}
+                              comprovanteUrl={p.comprovante_url}
+                              observacoes={p.observacoes}
                             />
                           ) : null}
                         </TD>
